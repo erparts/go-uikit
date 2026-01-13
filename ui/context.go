@@ -17,16 +17,8 @@ type Context struct {
 	widgets []Widget
 	focus   int // -1 means none
 
-	// Pointer state in *logical pixels* (Ebiten's standard coordinate space).
-	ptrX, ptrY  int
-	ptrDown     bool
-	ptrJustDown bool
-	ptrJustUp   bool
-	ptrIsTouch  bool
-	activeTouch ebiten.TouchID
+	ptr         *PointerStatus
 	hasTouch    bool
-
-	// Touch tracking (robust across Ebiten versions/platforms)
 	prevTouches map[ebiten.TouchID]struct{}
 }
 
@@ -46,6 +38,7 @@ func NewContext(theme *Theme, renderer *etxt.Renderer, ime IMEBridge) *Context {
 		prevTouches: map[ebiten.TouchID]struct{}{},
 		root:        root,
 		widgets:     []Widget{root},
+		ptr:         &PointerStatus{},
 	}
 }
 
@@ -106,22 +99,8 @@ func (c *Context) rebuildWidgets() {
 	walk(c.root)
 }
 
-type PointerStatus struct {
-	X, Y       int
-	IsJustDown bool
-	IsJustUp   bool
-	IsTouch    bool
-}
-
 func (c *Context) Pointer() PointerStatus {
-	s := PointerStatus{}
-	s.IsJustDown = c.ptrJustDown
-	s.IsJustUp = c.ptrJustUp
-	s.IsTouch = c.ptrIsTouch
-	s.X = c.ptrX
-	s.Y = c.ptrY
-
-	return s
+	return *c.ptr
 }
 
 func (c *Context) dispatch(w Widget, e Event) {
@@ -239,9 +218,9 @@ func (c *Context) focusPrev() {
 }
 
 func (c *Context) readPointerSnapshot() {
-	c.ptrJustDown = false
-	c.ptrJustUp = false
-	c.ptrIsTouch = false
+	c.ptr.IsJustDown = false
+	c.ptr.IsJustUp = false
+	c.ptr.IsTouch = false
 
 	// Touch tracking (prefer this on mobile; CursorPosition is always (0,0) there).
 	touches := ebiten.TouchIDs()
@@ -267,32 +246,30 @@ func (c *Context) readPointerSnapshot() {
 
 	// Acquire an active touch when pressed
 	if !c.hasTouch && len(justPressed) > 0 {
-		c.activeTouch = justPressed[0]
+		c.ptr.TouchID = justPressed[0]
 		c.hasTouch = true
-		c.ptrJustDown = true
+		c.ptr.IsJustDown = true
 	}
 
 	if c.hasTouch {
-		// Is it still down?
-		if _, ok := curr[c.activeTouch]; ok {
-			c.ptrDown = true
-			c.ptrIsTouch = true
-			c.ptrX, c.ptrY = ebiten.TouchPosition(c.activeTouch)
+		if _, ok := curr[c.ptr.TouchID]; ok {
+			c.ptr.IsDown = true
+			c.ptr.IsTouch = true
+			c.ptr.X, c.ptr.Y = ebiten.TouchPosition(c.ptr.TouchID)
 		} else {
-			// Released this tick?
-			c.ptrDown = false
-			c.ptrIsTouch = true
-			c.ptrJustUp = true
+			c.ptr.IsDown = false
+			c.ptr.IsTouch = true
+			c.ptr.IsJustUp = true
 			c.hasTouch = false
 		}
+
 		return
 	}
 
-	// Mouse fallback (desktop)
-	c.ptrX, c.ptrY = ebiten.CursorPosition()
-	c.ptrDown = ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft)
-	c.ptrJustDown = inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft)
-	c.ptrJustUp = inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft)
+	c.ptr.X, c.ptr.Y = ebiten.CursorPosition()
+	c.ptr.IsDown = ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft)
+	c.ptr.IsJustDown = inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft)
+	c.ptr.IsJustUp = inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft)
 }
 
 func (c *Context) widgetHit(w Widget, x, y int) bool {
@@ -336,8 +313,8 @@ func (c *Context) Update() {
 
 	// IME behavior: any tap/click outside a text input closes the IME.
 	// We decide focus target on pointer down using a "topmost hit" strategy.
-	if c.ptrJustDown {
-		w := c.topmostAt(c.ptrX, c.ptrY)
+	if c.ptr.IsJustDown {
+		w := c.topmostAt(c.ptr.X, c.ptr.Y)
 		if w != nil {
 			if tw, ok := w.(TextWidget); ok && tw.WantsIME() {
 				c.SetFocus(w)
@@ -352,14 +329,14 @@ func (c *Context) Update() {
 
 	// Pointer down chooses a single target (topmost), prevents underlying widgets from also receiving presses.
 	var target Widget
-	if c.ptrJustDown {
-		target = c.topmostAt(c.ptrX, c.ptrY)
+	if c.ptr.IsJustDown {
+		target = c.topmostAt(c.ptr.X, c.ptr.Y)
 	}
 
 	// Hover only for mouse: topmost under pointer.
 	var hoverTarget Widget
-	if !c.ptrIsTouch {
-		hoverTarget = c.topmostAt(c.ptrX, c.ptrY)
+	if !c.ptr.IsTouch {
+		hoverTarget = c.topmostAt(c.ptr.X, c.ptr.Y)
 	}
 
 	for _, w := range c.widgets {
@@ -371,20 +348,21 @@ func (c *Context) Update() {
 		b.hovered = (hoverTarget == w)
 
 		// Pointer down routed to the chosen target.
-		if c.ptrJustDown && target == w && b.IsEnabled() {
+		if c.ptr.IsJustDown && target == w && b.IsEnabled() {
 			b.pressed = true
-			c.dispatch(w, Event{Type: EventPointerDown, X: c.ptrX, Y: c.ptrY})
+			c.dispatch(w, Event{Type: EventPointerDown, X: c.ptr.X, Y: c.ptr.Y})
 		}
 
 		// Pointer up: release + click if pointer ends inside widget.
-		if c.ptrJustUp {
+		if c.ptr.IsJustUp {
 			wasPressed := b.pressed
 			if wasPressed {
-				c.dispatch(w, Event{Type: EventPointerUp, X: c.ptrX, Y: c.ptrY})
-				if b.IsEnabled() && c.widgetHit(w, c.ptrX, c.ptrY) {
-					c.dispatch(w, Event{Type: EventClick, X: c.ptrX, Y: c.ptrY})
+				c.dispatch(w, Event{Type: EventPointerUp, X: c.ptr.X, Y: c.ptr.Y})
+				if b.IsEnabled() && c.widgetHit(w, c.ptr.X, c.ptr.Y) {
+					c.dispatch(w, Event{Type: EventClick, X: c.ptr.X, Y: c.ptr.Y})
 				}
 			}
+
 			b.pressed = false
 		}
 

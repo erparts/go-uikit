@@ -28,3 +28,12 @@ type OverlayWidget interface {
 type Themeable interface {
 	SetTheme(theme *Theme)
 }
+
+type PointerStatus struct {
+	X, Y       int
+	IsDown     bool
+	IsJustDown bool
+	IsJustUp   bool
+	IsTouch    bool
+	TouchID    ebiten.TouchID
+}
