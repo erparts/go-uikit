@@ -142,6 +142,10 @@ func (s *Scroller) DrawBar(dst *ebiten.Image, theme *Theme, viewportW, viewportH
 		thumbY = int(math.Round(float64(trackH-thumbH) * float64(s.ScrollY) / float64(maxScroll)))
 	}
 
-	vector.DrawFilledRect(dst, float32(trackX), 0, float32(trackW), float32(trackH), theme.Border, false)
-	vector.DrawFilledRect(dst, float32(trackX), float32(thumbY), float32(trackW), float32(thumbH), theme.Focus, false)
+	// IMPORTANT: SubImage keeps absolute coordinates.
+	ox := dst.Bounds().Min.X
+	oy := dst.Bounds().Min.Y
+
+	vector.DrawFilledRect(dst, float32(trackX+ox), float32(oy), float32(trackW), float32(trackH), theme.Border, false)
+	vector.DrawFilledRect(dst, float32(trackX+ox), float32(oy+thumbY), float32(trackW), float32(thumbH), theme.Focus, false)
 }

@@ -46,6 +46,12 @@ type Theme struct {
 	Disabled       color.RGBA
 	ErrorText      color.RGBA
 	ErrorBorder    color.RGBA
+	Scrollbar      color.RGBA
+
+	// Scrollbar
+	ScrollbarRadius int
+	ScrollbarMinH   int
+	ScrollbarW      int
 
 	Caret color.RGBA
 }

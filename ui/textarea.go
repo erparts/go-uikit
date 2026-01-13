@@ -49,11 +49,11 @@ func (t *TextArea) WantsIME() bool  { return true }
 
 func (t *TextArea) Text() string     { return t.text }
 func (t *TextArea) SetText(s string) { t.text = s }
+
 func (t *TextArea) SetLines(n int) {
 	if n < 1 {
 		n = 1
 	}
-
 	t.lines = n
 }
 
@@ -97,9 +97,11 @@ func (t *TextArea) Update(ctx *Context) {
 		t.caretTick = 0
 	}
 
-	// Compute content height (scrollable)
-	ctrl, content := t.controlAndContentRects(ctx)
+	// Compute content viewport and metrics
+	_, content := t.controlAndContentRects(ctx)
 	met, _ := MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
+
+	// Compute content height (scrollable)
 	lineCount := 1
 	if t.text != "" {
 		lineCount = 1 + strings.Count(t.text, "\n")
@@ -114,30 +116,61 @@ func (t *TextArea) Update(ctx *Context) {
 
 	// Editing only when focused
 	if !t.base.focused || !t.base.Enabled {
-		_ = ctrl
 		return
 	}
+
+	changed := false
 
 	for _, r := range ebiten.AppendInputChars(nil) {
 		if r == '\b' || r == 0x7f {
 			t.backspace()
+			changed = true
 			continue
 		}
 		if r == '\n' || r == '\r' {
 			t.text += "\n"
+			changed = true
 			continue
 		}
 		if r < 0x20 {
 			continue
 		}
 		t.text += string(r)
+		changed = true
 	}
 
+	// Optional: keep these for platforms that don't send backspace/enter via chars
 	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
 		t.backspace()
+		changed = true
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyKPEnter) {
 		t.text += "\n"
+		changed = true
+	}
+
+	// Scroll-to-caret (caret at end of text)
+	if changed {
+		parts := strings.Split(t.text, "\n")
+		lastIdx := len(parts) - 1
+		caretBottom := (lastIdx + 1) * met.Height // bottom of last line cell
+
+		minScroll := caretBottom - content.H
+		if minScroll < 0 {
+			minScroll = 0
+		}
+		if t.Scroll.ScrollY < minScroll {
+			t.Scroll.ScrollY = minScroll
+		}
+
+		// clamp just in case
+		maxScroll := contentH - content.H
+		if maxScroll < 0 {
+			maxScroll = 0
+		}
+		if t.Scroll.ScrollY > maxScroll {
+			t.Scroll.ScrollY = maxScroll
+		}
 	}
 }
 
@@ -220,6 +253,7 @@ func (t *TextArea) Draw(ctx *Context, dst *ebiten.Image) {
 
 	// Clip to content area
 	sub := dst.SubImage(content.ImageRect()).(*ebiten.Image)
+	ox, oy := sub.Bounds().Min.X, sub.Bounds().Min.Y
 
 	// Ensure renderer state for content
 	ctx.Text.SetFont(ctx.Theme.Font)
@@ -241,10 +275,11 @@ func (t *TextArea) Draw(ctx *Context, dst *ebiten.Image) {
 	lines := strings.Split(drawStr, "\n")
 	for i, line := range lines {
 		y := startY + i*met.Height + met.Ascent
-		ctx.Text.Draw(sub, line, 0, y)
+		// IMPORTANT: SubImage keeps absolute coordinates -> use (ox, oy)
+		ctx.Text.Draw(sub, line, ox, oy+y)
 	}
 
-	// Scrollbar (using shared helper)
+	// Scrollbar (SubImage-safe after patch below)
 	lineCount := 1
 	if t.text != "" {
 		lineCount = 1 + strings.Count(t.text, "\n")
@@ -283,7 +318,16 @@ func (t *TextArea) Draw(ctx *Context, dst *ebiten.Image) {
 			}
 
 			if cy+met.Height >= 0 && cy <= content.H {
-				vector.DrawFilledRect(sub, float32(cx), float32(cy), float32(t.CaretWidthPx), float32(met.Height), ctx.Theme.Caret, false)
+				// IMPORTANT: SubImage keeps absolute coords -> add (ox,oy)
+				vector.DrawFilledRect(
+					sub,
+					float32(ox+cx),
+					float32(oy+cy),
+					float32(t.CaretWidthPx),
+					float32(met.Height),
+					ctx.Theme.Caret,
+					false,
+				)
 			}
 		}
 	}

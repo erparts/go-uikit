@@ -36,8 +36,6 @@ func NewContext(theme *Theme, renderer *etxt.Renderer, ime IMEBridge) *Context {
 	renderer.SetSize(float64(theme.FontPx))
 
 	root := NewStackLayout(theme)
-	root.PadX = theme.SpaceM
-	root.PadY = theme.SpaceM
 
 	return &Context{
 		Theme:       theme,
