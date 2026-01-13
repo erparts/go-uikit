@@ -11,6 +11,7 @@ import (
 	"golang.org/x/image/font/sfnt"
 
 	"github.com/erparts/go-uikit/ui"
+	"github.com/erparts/go-uikit/ui/widget"
 )
 
 type Game struct {
@@ -27,21 +28,21 @@ type Game struct {
 	theme    *ui.Theme
 	ctx      *ui.Context
 
-	title        *ui.Label
-	txtA         *ui.TextInput
-	txtB         *ui.TextInput
-	txtDis       *ui.TextInput
-	ta           *ui.TextArea
-	sel          *ui.Select
-	box          *ui.Container
-	chkA         *ui.Checkbox
-	chkDis       *ui.Checkbox
-	chkGrid      *ui.Checkbox
-	btnA         *ui.Button
-	btnDis       *ui.Button
-	footer       *ui.Label
-	focusInfo    *ui.Label
-	exampleLabel *ui.Label
+	title        *widget.Label
+	txtA         *widget.TextInput
+	txtB         *widget.TextInput
+	txtDis       *widget.TextInput
+	ta           *widget.TextArea
+	sel          *widget.Select
+	box          *widget.Container
+	chkA         *widget.Checkbox
+	chkDis       *widget.Checkbox
+	chkGrid      *widget.Checkbox
+	btnA         *widget.Button
+	btnDis       *widget.Button
+	footer       *widget.Label
+	focusInfo    *widget.Label
+	exampleLabel *widget.Label
 }
 
 func mustFont() *sfnt.Font {
@@ -82,26 +83,26 @@ func (g *Game) initOnce() {
 	g.stack = ui.NewStackLayout(g.theme)
 	g.grid = ui.NewGridLayout(g.theme)
 
-	g.title = ui.NewLabel("UI Kit Demo — consistent proportions (Theme-driven)")
-	g.focusInfo = ui.NewLabel("")
-	g.exampleLabel = ui.NewLabel("Label example: static helper text")
+	g.title = widget.NewLabel("UI Kit Demo — consistent proportions (Theme-driven)")
+	g.focusInfo = widget.NewLabel("")
+	g.exampleLabel = widget.NewLabel("Label example: static helper text")
 
-	g.txtA = ui.NewTextInput("Type here…")
+	g.txtA = widget.NewTextInput("Type here…")
 	g.txtA.SetDefault("Hello Ebiten UI")
 
-	g.txtB = ui.NewTextInput("Search…")
+	g.txtB = widget.NewTextInput("Search…")
 
-	g.txtDis = ui.NewTextInput("Disabled input")
+	g.txtDis = widget.NewTextInput("Disabled input")
 	g.txtDis.SetDefault("Disabled value")
 	g.txtDis.SetEnabled(false)
 
-	g.ta = ui.NewTextArea("Multi-line…")
+	g.ta = widget.NewTextArea("Multi-line…")
 	g.ta.SetLines(5)
 	g.ta.SetText("Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7")
 
-	g.sel = ui.NewSelect([]string{"Option A", "Option B", "Option C", "Option D", "Option E", "Option F"})
+	g.sel = widget.NewSelect([]string{"Option A", "Option B", "Option C", "Option D", "Option E", "Option F"})
 
-	g.box = ui.NewContainer()
+	g.box = widget.NewContainer()
 	g.box.OnDraw = func(ctx *ui.Context, dst *ebiten.Image, content ui.Rect) {
 		// Example: draw custom content using the same text renderer/theme.
 		lines := []string{
@@ -126,24 +127,24 @@ func (g *Game) initOnce() {
 		}
 	}
 
-	g.chkA = ui.NewCheckbox("Enable main button")
+	g.chkA = widget.NewCheckbox("Enable main button")
 	g.chkA.SetChecked(true)
 
-	g.chkDis = ui.NewCheckbox("Disabled checkbox")
+	g.chkDis = widget.NewCheckbox("Disabled checkbox")
 	g.chkDis.SetChecked(true)
 	g.chkDis.SetEnabled(false)
 
-	g.chkGrid = ui.NewCheckbox("Use grid layout")
+	g.chkGrid = widget.NewCheckbox("Use grid layout")
 
-	g.btnA = ui.NewButton("Action (enabled)")
+	g.btnA = widget.NewButton("Action (enabled)")
 	g.btnA.OnClick = func() {
 		g.footer.SetText("Button clicked!")
 	}
 
-	g.btnDis = ui.NewButton("Action (disabled)")
+	g.btnDis = widget.NewButton("Action (disabled)")
 	g.btnDis.SetEnabled(false)
 
-	g.footer = ui.NewLabel("")
+	g.footer = widget.NewLabel("")
 
 	g.ctx.Add(g.title)
 	g.ctx.Add(g.focusInfo)
@@ -241,28 +242,22 @@ func (g *Game) Update() error {
 
 	// Demo validations
 	if g.txtB.Text() == "" {
-		g.txtB.Base().Invalid = true
-		g.txtB.Base().ErrorText = "Required"
+		g.txtB.Base().SetInvalid("Required")
 	} else {
-		g.txtB.Base().Invalid = false
-		g.txtB.Base().ErrorText = ""
+		g.txtB.Base().SetInvalid("")
 	}
 
 	if strings.TrimSpace(g.ta.Text()) == "" {
-		g.ta.Base().Invalid = true
-		g.ta.Base().ErrorText = "Required"
+		g.txtB.Base().SetInvalid("Required")
 	} else {
-		g.ta.Base().Invalid = false
-		g.ta.Base().ErrorText = ""
+		g.txtB.Base().SetInvalid("")
 	}
 
 	selVal := g.sel.Value()
 	if selVal == "Option A" || selVal == "" {
-		g.sel.Base().Invalid = true
-		g.sel.Base().ErrorText = "Option A is not allowed"
+		g.sel.Base().SetInvalid("Option A is not allowed")
 	} else {
-		g.sel.Base().Invalid = false
-		g.sel.Base().ErrorText = ""
+		g.txtB.Base().SetInvalid("")
 	}
 
 	// Enable button based on checkbox state

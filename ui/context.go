@@ -106,8 +106,22 @@ func (c *Context) rebuildWidgets() {
 	walk(c.root)
 }
 
-func (c *Context) Pointer() (x, y int, down, justDown, justUp, isTouch bool) {
-	return c.ptrX, c.ptrY, c.ptrDown, c.ptrJustDown, c.ptrJustUp, c.ptrIsTouch
+type PointerStatus struct {
+	X, Y       int
+	IsJustDown bool
+	IsJustUp   bool
+	IsTouch    bool
+}
+
+func (c *Context) Pointer() PointerStatus {
+	s := PointerStatus{}
+	s.IsJustDown = c.ptrJustDown
+	s.IsJustUp = c.ptrJustUp
+	s.IsTouch = c.ptrIsTouch
+	s.X = c.ptrX
+	s.Y = c.ptrY
+
+	return s
 }
 
 func (c *Context) dispatch(w Widget, e Event) {
@@ -199,7 +213,7 @@ func (c *Context) focusNext() {
 	start := c.focus
 	for i := 0; i < len(c.widgets); i++ {
 		idx := (start + 1 + i) % len(c.widgets)
-		if c.widgets[idx].Base().Visible && c.widgets[idx].Base().Enabled && c.widgets[idx].Focusable() {
+		if c.widgets[idx].Base().visible && c.widgets[idx].Base().IsEnabled() && c.widgets[idx].Focusable() {
 			c.SetFocus(c.widgets[idx])
 			return
 		}
@@ -217,7 +231,7 @@ func (c *Context) focusPrev() {
 		for idx < 0 {
 			idx += len(c.widgets)
 		}
-		if c.widgets[idx].Base().Visible && c.widgets[idx].Base().Enabled && c.widgets[idx].Focusable() {
+		if c.widgets[idx].Base().visible && c.widgets[idx].Base().IsEnabled() && c.widgets[idx].Focusable() {
 			c.SetFocus(c.widgets[idx])
 			return
 		}
@@ -293,7 +307,7 @@ func (c *Context) topmostAt(x, y int) Widget {
 	for i := len(c.widgets) - 1; i >= 0; i-- {
 		w := c.widgets[i]
 		b := w.Base()
-		if !b.Visible || !b.Enabled {
+		if !b.visible || !b.IsEnabled() {
 			continue
 		}
 		if c.widgetHit(w, x, y) {
@@ -350,14 +364,14 @@ func (c *Context) Update() {
 
 	for _, w := range c.widgets {
 		b := w.Base()
-		if !b.Visible {
+		if !b.visible {
 			continue
 		}
 
 		b.hovered = (hoverTarget == w)
 
 		// Pointer down routed to the chosen target.
-		if c.ptrJustDown && target == w && b.Enabled {
+		if c.ptrJustDown && target == w && b.IsEnabled() {
 			b.pressed = true
 			c.dispatch(w, Event{Type: EventPointerDown, X: c.ptrX, Y: c.ptrY})
 		}
@@ -367,14 +381,14 @@ func (c *Context) Update() {
 			wasPressed := b.pressed
 			if wasPressed {
 				c.dispatch(w, Event{Type: EventPointerUp, X: c.ptrX, Y: c.ptrY})
-				if b.Enabled && c.widgetHit(w, c.ptrX, c.ptrY) {
+				if b.IsEnabled() && c.widgetHit(w, c.ptrX, c.ptrY) {
 					c.dispatch(w, Event{Type: EventClick, X: c.ptrX, Y: c.ptrY})
 				}
 			}
 			b.pressed = false
 		}
 
-		b.focused = (c.Focused() == w) && b.Enabled && w.Focusable()
+		b.focused = (c.Focused() == w) && b.IsEnabled() && w.Focusable()
 	}
 }
 
@@ -382,6 +396,7 @@ func (c *Context) Draw(dst *ebiten.Image) {
 	if c.root == nil {
 		return
 	}
+
 	c.root.Draw(c, dst)
 	// Overlay pass delegated to root/layout
 	if ow, ok := any(c.root).(interface{ DrawOverlay(*Context, *ebiten.Image) }); ok {

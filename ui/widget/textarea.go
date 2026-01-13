@@ -1,9 +1,10 @@
-package ui
+package widget
 
 import (
 	"math"
 	"strings"
 
+	"github.com/erparts/go-uikit/ui"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -12,15 +13,15 @@ import (
 
 // TextArea is a multi-line text editor with internal vertical scrolling.
 type TextArea struct {
-	base  Base
-	theme *Theme
+	base  ui.Base
+	theme *ui.Theme
 
 	text        string
 	placeholder string
 
 	lines int
 
-	Scroll Scroller
+	Scroll ui.Scroller
 
 	// Caret config (end-of-text caret)
 	CaretWidthPx  int
@@ -30,20 +31,23 @@ type TextArea struct {
 }
 
 func NewTextArea(placeholder string) *TextArea {
+	cfg := ui.NewWidgetBaseConfig()
+
 	t := &TextArea{
-		base:          NewBase(),
+		base:          ui.NewBase(cfg),
 		placeholder:   placeholder,
 		lines:         5,
 		CaretWidthPx:  2,
 		CaretBlinkMs:  600,
 		CaretMarginPx: 0,
 	}
-	t.Scroll = NewScroller()
-	t.Scroll.Scrollbar = ScrollbarAlways // textarea typically shows it (content-dependent)
+
+	t.Scroll = ui.NewScroller()
+	t.Scroll.Scrollbar = ui.ScrollbarAlways // textarea typically shows it (content-dependent)
 	return t
 }
 
-func (t *TextArea) Base() *Base     { return &t.base }
+func (t *TextArea) Base() *ui.Base  { return &t.base }
 func (t *TextArea) Focusable() bool { return true }
 func (t *TextArea) WantsIME() bool  { return true }
 
@@ -57,15 +61,15 @@ func (t *TextArea) SetLines(n int) {
 	t.lines = n
 }
 
-func (t *TextArea) Measure() Rect { return t.base.Rect }
+func (t *TextArea) Measure() ui.Rect { return t.base.Rect }
 
 func (t *TextArea) SetFrame(x, y, w int) {
 	if t.theme == nil {
-		t.base.Rect = Rect{X: x, Y: y, W: w, H: t.base.Rect.H}
+		t.base.Rect = ui.Rect{X: x, Y: y, W: w, H: t.base.Rect.H}
 		return
 	}
 
-	met, _ := MetricsPx(t.theme.Font, t.theme.FontPx)
+	met, _ := ui.MetricsPx(t.theme.Font, t.theme.FontPx)
 	lines := t.lines
 	if lines <= 0 {
 		lines = 5
@@ -77,21 +81,21 @@ func (t *TextArea) SetFrame(x, y, w int) {
 	}
 
 	totalH := controlH
-	if t.base.Invalid && t.base.ErrorText != "" {
-		em, _ := MetricsPx(t.theme.Font, t.theme.ErrorFontPx)
+	if ok, errTxt := t.base.IsInvalid(); ok && errTxt != "" {
+		em, _ := ui.MetricsPx(t.theme.Font, t.theme.ErrorFontPx)
 		totalH += t.theme.ErrorGap + em.Height
 	}
 
-	t.base.Rect = Rect{X: x, Y: y, W: w, H: totalH}
+	t.base.Rect = ui.Rect{X: x, Y: y, W: w, H: totalH}
 }
 
-func (t *TextArea) Update(ctx *Context) {
+func (t *TextArea) Update(ctx *ui.Context) {
 	t.theme = ctx.Theme
 	if t.base.Rect.W > 0 && t.base.Rect.H == 0 {
 		t.SetFrame(t.base.Rect.X, t.base.Rect.Y, t.base.Rect.W)
 	}
 
-	if t.base.focused && t.base.Enabled {
+	if t.base.Focused() && t.base.IsEnabled() {
 		t.caretTick++
 	} else {
 		t.caretTick = 0
@@ -99,7 +103,7 @@ func (t *TextArea) Update(ctx *Context) {
 
 	// Compute content viewport and metrics
 	_, content := t.controlAndContentRects(ctx)
-	met, _ := MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
+	met, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 
 	// Compute content height (scrollable)
 	lineCount := 1
@@ -115,7 +119,7 @@ func (t *TextArea) Update(ctx *Context) {
 	t.Scroll.Update(ctx, content, contentH)
 
 	// Editing only when focused
-	if !t.base.focused || !t.base.Enabled {
+	if !t.base.Focused() || !t.base.IsEnabled() {
 		return
 	}
 
@@ -186,12 +190,12 @@ func (t *TextArea) backspace() {
 	t.text = string(rs[:len(rs)-1])
 }
 
-func (t *TextArea) controlAndContentRects(ctx *Context) (ctrl Rect, content Rect) {
+func (t *TextArea) controlAndContentRects(ctx *ui.Context) (ctrl ui.Rect, content ui.Rect) {
 	r := t.base.Rect
 
 	errorH := 0
-	if t.base.Invalid && t.base.ErrorText != "" {
-		em, _ := MetricsPx(ctx.Theme.Font, ctx.Theme.ErrorFontPx)
+	if ok, errTxt := t.base.IsInvalid(); ok && errTxt != "" {
+		em, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.ErrorFontPx)
 		errorH = ctx.Theme.ErrorGap + em.Height
 	}
 
@@ -200,19 +204,20 @@ func (t *TextArea) controlAndContentRects(ctx *Context) (ctrl Rect, content Rect
 		ctrlH = 0
 	}
 
-	ctrl = Rect{X: r.X, Y: r.Y, W: r.W, H: ctrlH}
+	ctrl = ui.Rect{X: r.X, Y: r.Y, W: r.W, H: ctrlH}
 	content = ctrl.Inset(ctx.Theme.PadX, ctx.Theme.PadY)
 	return ctrl, content
 }
 
-func (t *TextArea) errorRect(ctx *Context) Rect {
-	if !(t.base.Invalid && t.base.ErrorText != "") {
-		return Rect{}
+func (t *TextArea) errorRect(ctx *ui.Context) ui.Rect {
+	if ok, _ := t.base.IsInvalid(); !ok {
+		return ui.Rect{}
 	}
+
 	ctrl, _ := t.controlAndContentRects(ctx)
 
-	em, _ := MetricsPx(ctx.Theme.Font, ctx.Theme.ErrorFontPx)
-	return Rect{
+	em, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.ErrorFontPx)
+	return ui.Rect{
 		X: ctrl.X,
 		Y: ctrl.Bottom() + ctx.Theme.ErrorGap,
 		W: ctrl.W,
@@ -220,7 +225,7 @@ func (t *TextArea) errorRect(ctx *Context) Rect {
 	}
 }
 
-func (t *TextArea) Draw(ctx *Context, dst *ebiten.Image) {
+func (t *TextArea) Draw(ctx *ui.Context, dst *ebiten.Image) {
 	t.theme = ctx.Theme
 	if t.base.Rect.W > 0 && t.base.Rect.H == 0 {
 		t.SetFrame(t.base.Rect.X, t.base.Rect.Y, t.base.Rect.W)
@@ -230,25 +235,27 @@ func (t *TextArea) Draw(ctx *Context, dst *ebiten.Image) {
 
 	// Surface
 	bg := ctx.Theme.Surface
-	if !t.base.Enabled {
+	if !t.base.IsEnabled() {
 		bg = ctx.Theme.SurfacePressed
-	} else if t.base.pressed {
+	} else if t.base.Pressed() {
 		bg = ctx.Theme.SurfacePressed
-	} else if t.base.hovered {
+	} else if t.base.Hovered() {
 		bg = ctx.Theme.SurfaceHover
 	}
-	drawRoundedRect(dst, ctrl, ctx.Theme.Radius, bg)
+
+	t.base.DrawRoundedRect(dst, ctrl, ctx.Theme.Radius, bg)
 
 	// Border (red when invalid)
 	borderCol := ctx.Theme.Border
-	if t.base.Invalid {
+	if ok, _ := t.base.IsInvalid(); ok {
 		borderCol = ctx.Theme.ErrorBorder
 	}
-	drawRoundedBorder(dst, ctrl, ctx.Theme.Radius, ctx.Theme.BorderW, borderCol)
+
+	t.base.DrawRoundedBorder(dst, ctrl, ctx.Theme.Radius, ctx.Theme.BorderW, borderCol)
 
 	// Focus ring
-	if t.base.focused && t.base.Enabled {
-		drawFocusRing(dst, ctrl, ctx.Theme.Radius, ctx.Theme.FocusRingGap, ctx.Theme.FocusRingW, ctx.Theme.Focus)
+	if t.base.Focused() && t.base.IsEnabled() {
+		//drawFocusRing(dst, ctrl, ctx.Theme.Radius, ctx.Theme.FocusRingGap, ctx.Theme.FocusRingW, ctx.Theme.Focus)
 	}
 
 	// Clip to content area
@@ -260,13 +267,13 @@ func (t *TextArea) Draw(ctx *Context, dst *ebiten.Image) {
 	ctx.Text.SetSize(float64(ctx.Theme.FontPx))
 	ctx.Text.SetAlign(etxt.Left)
 
-	met, _ := MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
+	met, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 	startY := -t.Scroll.ScrollY
 
 	// Placeholder
 	drawStr := t.text
 	col := ctx.Theme.Text
-	if drawStr == "" && !t.base.focused {
+	if drawStr == "" && !t.base.Focused() {
 		drawStr = t.placeholder
 		col = ctx.Theme.MutedText
 	}
@@ -291,7 +298,7 @@ func (t *TextArea) Draw(ctx *Context, dst *ebiten.Image) {
 	t.Scroll.DrawBar(sub, ctx.Theme, content.W, content.H, contentH)
 
 	// Caret at end (approx). Draw on sub so it's clipped.
-	if t.base.focused && t.base.Enabled && t.CaretWidthPx > 0 {
+	if t.base.Focused() && t.base.IsEnabled() && t.CaretWidthPx > 0 {
 		blinkFrames := int(math.Max(1, float64(t.CaretBlinkMs)/1000.0*60.0))
 		if (t.caretTick/blinkFrames)%2 == 0 {
 			lastLine := ""
@@ -302,7 +309,7 @@ func (t *TextArea) Draw(ctx *Context, dst *ebiten.Image) {
 				lastLine = parts[lastIdx]
 			}
 
-			wBefore := MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, lastLine)
+			wBefore := ui.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, lastLine)
 			cx := wBefore + t.CaretMarginPx
 			cy := (lastIdx * met.Height) - t.Scroll.ScrollY
 
@@ -333,11 +340,11 @@ func (t *TextArea) Draw(ctx *Context, dst *ebiten.Image) {
 	}
 
 	// Validation message
-	if t.base.Invalid && t.base.ErrorText != "" {
-		err := t.errorRect(ctx)
-		drawErrorText(ctx, dst, err, t.base.ErrorText)
-	}
+	//if t.base.Invalid && t.base.ErrorText != "" {
+	//err := t.errorRect(ctx)
+	//	drawErrorText(ctx, dst, err, t.base.ErrorText)
+	//}
 }
 
 // SetTheme allows layouts to provide Theme before SetFrame is called.
-func (t *TextArea) SetTheme(theme *Theme) { t.theme = theme }
+func (t *TextArea) SetTheme(theme *ui.Theme) { t.theme = theme }

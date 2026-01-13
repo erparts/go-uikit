@@ -1,6 +1,8 @@
 package ui
 
-import "github.com/hajimehoshi/ebiten/v2"
+import (
+	"github.com/hajimehoshi/ebiten/v2"
+)
 
 // StackLayout places children vertically. If height > 0 it becomes scrollable and clips via SubImage.
 type StackLayout struct {
@@ -19,8 +21,8 @@ type StackLayout struct {
 }
 
 func NewStackLayout(theme *Theme) *StackLayout {
-	l := &StackLayout{base: NewBase()}
-	l.base.Enabled = true
+	l := &StackLayout{base: NewBase(&WidgetBaseConfig{})}
+	l.base.SetEnabled(true)
 	//l.PadX = theme.SpaceM
 	//l.PadY = theme.SpaceM
 	l.Gap = theme.SpaceS
@@ -70,7 +72,7 @@ func (l *StackLayout) Update(ctx *Context) {
 		if th, ok := any(ch).(Themeable); ok {
 			th.SetTheme(ctx.Theme)
 		}
-		if !ch.Base().Visible {
+		if !ch.Base().visible {
 			continue
 		}
 		ch.Update(ctx)
@@ -96,7 +98,7 @@ func (l *StackLayout) doLayout(ctx *Context) {
 		if th, ok := any(ch).(Themeable); ok {
 			th.SetTheme(ctx.Theme)
 		}
-		if !ch.Base().Visible {
+		if !ch.Base().visible {
 			continue
 		}
 		ch.SetFrame(x0, y, w0)
@@ -115,7 +117,7 @@ func (l *StackLayout) doLayout(ctx *Context) {
 }
 
 func (l *StackLayout) Draw(ctx *Context, dst *ebiten.Image) {
-	if !l.base.Visible {
+	if !l.base.visible {
 		return
 	}
 
@@ -126,7 +128,7 @@ func (l *StackLayout) Draw(ctx *Context, dst *ebiten.Image) {
 			if th, ok := any(ch).(Themeable); ok {
 				th.SetTheme(ctx.Theme)
 			}
-			if !ch.Base().Visible {
+			if !ch.Base().visible {
 				continue
 			}
 			ch.Draw(ctx, dst)
@@ -146,7 +148,7 @@ func (l *StackLayout) Draw(ctx *Context, dst *ebiten.Image) {
 		if th, ok := any(ch).(Themeable); ok {
 			th.SetTheme(ctx.Theme)
 		}
-		if !ch.Base().Visible {
+		if !ch.Base().visible {
 			continue
 		}
 		ch.Draw(ctx, l.scratch)
@@ -163,7 +165,7 @@ func (l *StackLayout) Draw(ctx *Context, dst *ebiten.Image) {
 }
 
 func (l *StackLayout) DrawOverlay(ctx *Context, dst *ebiten.Image) {
-	if !l.base.Visible {
+	if !l.base.visible {
 		return
 	}
 	// Overlay should escape clipping -> draw on dst (not on subimage)

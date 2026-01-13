@@ -1,6 +1,8 @@
 package ui
 
-import "github.com/hajimehoshi/ebiten/v2"
+import (
+	"github.com/hajimehoshi/ebiten/v2"
+)
 
 // GridLayout places children in a fixed column grid. If height > 0 it becomes scrollable and clips via SubImage.
 type GridLayout struct {
@@ -22,7 +24,7 @@ type GridLayout struct {
 }
 
 func NewGridLayout(theme *Theme) *GridLayout {
-	l := &GridLayout{base: NewBase()}
+	l := &GridLayout{base: NewBase(&WidgetBaseConfig{})}
 	l.Columns = 2
 	//l.PadX = theme.SpaceM
 	//l.PadY = theme.SpaceM
@@ -63,7 +65,7 @@ func (l *GridLayout) Update(ctx *Context) {
 		if th, ok := any(ch).(Themeable); ok {
 			th.SetTheme(ctx.Theme)
 		}
-		if !ch.Base().Visible {
+		if !ch.Base().visible {
 			continue
 		}
 		ch.Update(ctx)
@@ -105,7 +107,7 @@ func (l *GridLayout) doLayout(ctx *Context) {
 		if th, ok := any(ch).(Themeable); ok {
 			th.SetTheme(ctx.Theme)
 		}
-		if !ch.Base().Visible {
+		if !ch.Base().visible {
 			continue
 		}
 		ch.SetFrame(x, y, cellW)
@@ -137,7 +139,7 @@ func (l *GridLayout) doLayout(ctx *Context) {
 }
 
 func (l *GridLayout) Draw(ctx *Context, dst *ebiten.Image) {
-	if !l.base.Visible {
+	if !l.base.visible {
 		return
 	}
 	vp := l.base.Rect
@@ -146,7 +148,7 @@ func (l *GridLayout) Draw(ctx *Context, dst *ebiten.Image) {
 			if th, ok := any(ch).(Themeable); ok {
 				th.SetTheme(ctx.Theme)
 			}
-			if !ch.Base().Visible {
+			if !ch.Base().visible {
 				continue
 			}
 			ch.Draw(ctx, dst)
@@ -166,7 +168,7 @@ func (l *GridLayout) Draw(ctx *Context, dst *ebiten.Image) {
 		if th, ok := any(ch).(Themeable); ok {
 			th.SetTheme(ctx.Theme)
 		}
-		if !ch.Base().Visible {
+		if !ch.Base().visible {
 			continue
 		}
 		ch.Draw(ctx, l.scratch)
@@ -182,7 +184,7 @@ func (l *GridLayout) Draw(ctx *Context, dst *ebiten.Image) {
 }
 
 func (l *GridLayout) DrawOverlay(ctx *Context, dst *ebiten.Image) {
-	if !l.base.Visible {
+	if !l.base.visible {
 		return
 	}
 	for _, ch := range l.children {

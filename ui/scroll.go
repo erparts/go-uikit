@@ -48,8 +48,8 @@ func (s *Scroller) Update(ctx *Context, viewport Rect, contentH int) {
 		return
 	}
 
-	px, py, down, justDown, justUp, _ := ctx.Pointer()
-	inside := viewport.Contains(px, py)
+	ptr := ctx.Pointer()
+	inside := viewport.Contains(ptr.X, ptr.Y)
 
 	changed := false
 
@@ -65,20 +65,22 @@ func (s *Scroller) Update(ctx *Context, viewport Rect, contentH int) {
 	}
 
 	// Drag (mouse/touch)
-	if justDown && inside {
+	if ptr.IsJustDown && inside {
 		s.dragging = true
-		s.lastPY = py
+		s.lastPY = ptr.Y
 		s.showTicks = 18
 	}
-	if s.dragging && down {
-		dy := py - s.lastPY
+
+	if s.dragging && ptr.IsJustDown {
+		dy := ptr.Y - s.lastPY
 		s.ScrollY -= dy
-		s.lastPY = py
+		s.lastPY = ptr.Y
 		if dy != 0 {
 			changed = true
 		}
 	}
-	if justUp {
+
+	if ptr.IsJustUp {
 		s.dragging = false
 	}
 

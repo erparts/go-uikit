@@ -1,6 +1,8 @@
 package ui
 
-import "github.com/hajimehoshi/ebiten/v2"
+import (
+	"github.com/hajimehoshi/ebiten/v2"
+)
 
 // Container is an empty widget that lets you render custom content inside a themed box.
 // It still participates in focus/invalid layout like any other widget.
@@ -17,7 +19,7 @@ type Container struct {
 
 func NewContainer() *Container {
 	return &Container{
-		base:        NewBase(),
+		base:        NewBase(&WidgetBaseConfig{}),
 		DrawSurface: true,
 	}
 }
@@ -58,7 +60,7 @@ func (c *Container) Draw(ctx *Context, dst *ebiten.Image) {
 	if c.DrawSurface {
 		drawRoundedRect(dst, r, ctx.Theme.Radius, ctx.Theme.Surface)
 		borderCol := ctx.Theme.Border
-		if c.base.Invalid {
+		if c.base.invalid {
 			borderCol = ctx.Theme.ErrorBorder
 		}
 
@@ -71,8 +73,8 @@ func (c *Container) Draw(ctx *Context, dst *ebiten.Image) {
 	}
 
 	err := c.base.ErrorRect(ctx.Theme)
-	if c.base.Invalid {
-		drawErrorText(ctx, dst, err, c.base.ErrorText)
+	if c.base.invalid {
+		drawErrorText(ctx, dst, err, c.base.errorText)
 	}
 }
 

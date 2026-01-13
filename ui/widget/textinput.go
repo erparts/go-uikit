@@ -1,8 +1,9 @@
-package ui
+package widget
 
 import (
 	"math"
 
+	"github.com/erparts/go-uikit/ui"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -11,8 +12,8 @@ import (
 // TextInput is a single-line input box (no label).
 // Height and proportions come from Theme; external layout controls only width.
 type TextInput struct {
-	base  Base
-	theme *Theme
+	base  ui.Base
+	theme *ui.Theme
 
 	// Value / defaults
 	text                 string
@@ -30,8 +31,10 @@ type TextInput struct {
 }
 
 func NewTextInput(placeholder string) *TextInput {
+	cfg := ui.NewWidgetBaseConfig()
+
 	return &TextInput{
-		base:          NewBase(),
+		base:          ui.NewBase(cfg),
 		placeholder:   placeholder,
 		CaretWidthPx:  2,
 		CaretBlinkMs:  600,
@@ -39,7 +42,7 @@ func NewTextInput(placeholder string) *TextInput {
 	}
 }
 
-func (t *TextInput) Base() *Base     { return &t.base }
+func (t *TextInput) Base() *ui.Base  { return &t.base }
 func (t *TextInput) Focusable() bool { return true }
 func (t *TextInput) WantsIME() bool  { return true }
 
@@ -49,10 +52,10 @@ func (t *TextInput) SetFrame(x, y, w int) {
 		return
 	}
 
-	t.base.Rect = Rect{X: x, Y: y, W: w, H: 0}
+	t.base.Rect = ui.Rect{X: x, Y: y, W: w, H: 0}
 }
 
-func (t *TextInput) Measure() Rect { return t.base.Rect }
+func (t *TextInput) Measure() ui.Rect { return t.base.Rect }
 
 func (t *TextInput) SetEnabled(v bool) { t.base.SetEnabled(v) }
 func (t *TextInput) SetVisible(v bool) { t.base.SetVisible(v) }
@@ -71,27 +74,27 @@ func (t *TextInput) SetDefault(s string) {
 func (t *TextInput) Reset() { t.text = t.DefaultText }
 
 // HandleEvent allows focus transitions to apply policies (default restore).
-func (t *TextInput) HandleEvent(ctx *Context, e Event) {
-	if e.Type == EventFocusLost && t.RestoreDefaultOnBlur && t.text == "" {
+func (t *TextInput) HandleEvent(ctx *ui.Context, e ui.Event) {
+	if e.Type == ui.EventFocusLost && t.RestoreDefaultOnBlur && t.text == "" {
 		t.text = t.DefaultText
 	}
 }
 
-func (t *TextInput) Update(ctx *Context) {
+func (t *TextInput) Update(ctx *ui.Context) {
 	t.theme = ctx.Theme
 	if t.base.Rect.H == 0 {
 		t.base.SetFrame(ctx.Theme, t.base.Rect.X, t.base.Rect.Y, t.base.Rect.W)
 	}
 
 	// Tick caret
-	if t.base.focused && t.base.Enabled {
+	if t.base.Focused() && t.base.IsEnabled() {
 		t.caretTick++
 	} else {
 		t.caretTick = 0
 	}
 
 	// If not focused, ignore input
-	if !t.base.focused || !t.base.Enabled {
+	if !t.base.Focused() || !t.base.IsEnabled() {
 		return
 	}
 
@@ -136,7 +139,7 @@ func (t *TextInput) backspace() {
 	t.text = string(rs[:len(rs)-1])
 }
 
-func (t *TextInput) Draw(ctx *Context, dst *ebiten.Image) {
+func (t *TextInput) Draw(ctx *ui.Context, dst *ebiten.Image) {
 	t.base.Draw(ctx, dst)
 
 	t.theme = ctx.Theme
@@ -146,19 +149,19 @@ func (t *TextInput) Draw(ctx *Context, dst *ebiten.Image) {
 	content := r.Inset(ctx.Theme.PadX, ctx.Theme.PadY)
 
 	// Baseline
-	met, _ := MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
+	met, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 	baselineY := r.Y + (r.H-met.Height)/2 + met.Ascent
 
 	// Text / placeholder
 	drawStr := t.text
 	textCol := ctx.Theme.Text
-	if drawStr == "" && !t.base.focused {
+	if drawStr == "" && !t.base.Focused() {
 		drawStr = t.placeholder
 		textCol = ctx.Theme.MutedText
 	}
 
 	// Horizontal scroll so the end is visible (caret is always at end).
-	textW := MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, drawStr)
+	textW := ui.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, drawStr)
 	shiftX := 0
 	if textW > content.W {
 		shiftX = content.W - textW
@@ -169,10 +172,10 @@ func (t *TextInput) Draw(ctx *Context, dst *ebiten.Image) {
 	ctx.Text.Draw(dst, drawStr, content.X+shiftX, baselineY)
 
 	// Caret (rect, no extra space)
-	if t.base.focused && t.base.Enabled && t.CaretWidthPx > 0 {
+	if t.base.Focused() && t.base.IsEnabled() && t.CaretWidthPx > 0 {
 		blinkFrames := int(math.Max(1, float64(t.CaretBlinkMs)/1000.0*60.0))
 		if (t.caretTick/blinkFrames)%2 == 0 {
-			wBefore := MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, t.text)
+			wBefore := ui.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, t.text)
 			cx := content.X + shiftX + wBefore + t.CaretMarginPx
 			cy := baselineY - met.Ascent
 			caretH := met.Height
@@ -190,4 +193,4 @@ func (t *TextInput) Draw(ctx *Context, dst *ebiten.Image) {
 }
 
 // SetTheme allows layouts to provide Theme before SetFrame is called.
-func (t *TextInput) SetTheme(theme *Theme) { t.theme = theme }
+func (t *TextInput) SetTheme(theme *ui.Theme) { t.theme = theme }
