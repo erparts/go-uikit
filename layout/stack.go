@@ -1,80 +1,75 @@
-package uikit
+package layout
 
 import (
-	"image"
+	"fmt"
 	"image/color"
 
-	"github.com/erparts/go-uikit/common"
+	"github.com/erparts/go-uikit"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-// StackLayout places children vertically. If height > 0 it becomes scrollable and clips via SubImage.
-type StackLayout struct {
-	base     Base
-	children []Widget
+// Stack places children vertically. If height > 0 it becomes scrollable and clips via SubImage.
+type Stack struct {
+	uikit.Base
+	children []uikit.Widget
 
 	PadX int
 	PadY int
 	Gap  int
 
-	Scroll Scroller
+	Scroll uikit.Scroller
 
-	contentH int
+	height int
 
 	scratch    *ebiten.Image
 	background color.RGBA
 }
 
-func NewStackLayout(theme *Theme) *StackLayout {
-	l := &StackLayout{base: NewBase(&WidgetBaseConfig{})}
-	l.base.SetEnabled(true)
+func NewStack(theme *uikit.Theme) *Stack {
+	l := &Stack{}
+
+	cfg := uikit.NewWidgetBaseConfig(theme)
+	l.Base = uikit.NewBase(cfg)
+	l.Base.SetEnabled(true)
+	l.Base.HeightCaculator = func() int {
+		fmt.Println("getHe", l.height)
+		return l.height
+	}
+
 	//l.PadX = theme.SpaceM
 	//l.PadY = theme.SpaceM
 	l.Gap = theme.SpaceS
-	l.Scroll = NewScroller()
+	l.Scroll = uikit.NewScroller()
 	return l
 }
 
-func (l *StackLayout) Base() *Base     { return &l.base }
-func (l *StackLayout) Focusable() bool { return false }
-
-func (l *StackLayout) SetFrame(x, y, w int) {
-	l.base.Rect = image.Rect(x, y, x+w, y+l.base.Rect.Dy())
-}
-
-func (l *StackLayout) Measure() image.Rectangle {
-	return l.base.Rect
-}
+func (l *Stack) Focusable() bool { return false }
 
 // SetHeight sets the viewport height. Use 0 for unlimited (no scroll, no clipping).
-func (l *StackLayout) SetHeight(h int) {
-	if h < 0 {
-		h = 0
-	}
-
-	l.base.Rect = common.ChangeRectangleHeight(l.base.Rect, h)
+func (l *Stack) SetHeight(h int) {
+	l.height = h
 }
 
 // Children management
-func (l *StackLayout) Children() []Widget      { return l.children }
-func (l *StackLayout) SetChildren(ws []Widget) { l.children = ws }
-func (l *StackLayout) Add(ws ...Widget)        { l.children = append(l.children, ws...) }
-func (l *StackLayout) Clear()                  { l.children = nil }
+func (l *Stack) Children() []uikit.Widget      { return l.children }
+func (l *Stack) SetChildren(ws []uikit.Widget) { l.children = ws }
+func (l *Stack) Add(ws ...uikit.Widget)        { l.children = append(l.children, ws...) }
+func (l *Stack) Clear()                        { l.children = nil }
 
-func (l *StackLayout) Update(ctx *Context) {
-	// Layout pass (compute frames and content height)
+func (l *Stack) Update(ctx *uikit.Context) {
 	l.doLayout(ctx)
 
+	r := l.Measure(false)
+
+	fmt.Println("---", l.height, r.Dy())
 	// Scroll input only when height is limited
-	if l.base.Rect.Dy() > 0 {
-		l.Scroll.Update(ctx, l.base.Rect, l.contentH)
-		// Re-layout with updated scroll offset
+	if r.Dy() > 0 {
+		l.Scroll.Update(ctx, r, l.height)
 		l.doLayout(ctx)
 	}
 
-	// Forward update
 	for _, w := range l.children {
-		if !w.Base().IsVisible() {
+		if !w.IsVisible() {
 			continue
 		}
 
@@ -82,8 +77,8 @@ func (l *StackLayout) Update(ctx *Context) {
 	}
 }
 
-func (l *StackLayout) doLayout(ctx *Context) {
-	vp := l.base.Rect
+func (l *Stack) doLayout(ctx *uikit.Context) {
+	vp := l.Measure(false)
 	x0 := vp.Min.X + l.PadX
 	y0 := vp.Min.Y + l.PadY
 	w0 := vp.Dx() - l.PadX*2
@@ -98,11 +93,12 @@ func (l *StackLayout) doLayout(ctx *Context) {
 
 	contentH := l.PadY * 2
 	for i, ch := range l.children {
-		if !ch.Base().visible {
+		if !ch.IsVisible() {
 			continue
 		}
+
 		ch.SetFrame(x0, y, w0)
-		r := ch.Measure()
+		r := ch.Measure(true)
 		contentH += r.Dy()
 		if i != len(l.children)-1 {
 			contentH += l.Gap
@@ -115,23 +111,24 @@ func (l *StackLayout) doLayout(ctx *Context) {
 		contentH = vp.Dy()
 	}
 
-	l.contentH = contentH
+	l.SetHeight(contentH)
 }
 
-func (l *StackLayout) Draw(ctx *Context, dst *ebiten.Image) {
-	if !l.base.IsVisible() {
+func (l *Stack) Draw(ctx *uikit.Context, dst *ebiten.Image) {
+	if !l.IsVisible() {
 		return
 	}
 
-	vp := l.base.Rect
+	vp := l.Measure(false)
 	if vp.Dy() <= 0 {
 		// Unlimited: draw directly
 		for _, ch := range l.children {
-			if !ch.Base().visible {
+			if !ch.IsVisible() {
 				continue
 			}
 			ch.Draw(ctx, dst)
 		}
+
 		return
 	}
 
@@ -145,7 +142,7 @@ func (l *StackLayout) Draw(ctx *Context, dst *ebiten.Image) {
 	l.scratch.Clear()
 
 	for _, ch := range l.children {
-		if !ch.Base().visible {
+		if !ch.IsVisible() {
 			continue
 		}
 
@@ -160,21 +157,23 @@ func (l *StackLayout) Draw(ctx *Context, dst *ebiten.Image) {
 
 	// Scrollbar inside viewport (draw on clipped dst region)
 	sub := dst.SubImage(vp).(*ebiten.Image)
-	l.Scroll.DrawBar(sub, ctx.Theme, vp.Dx(), vp.Dy(), l.contentH)
+	l.Scroll.DrawBar(sub, ctx.Theme, vp.Dx(), vp.Dy(), l.height)
 
 }
 
-func (l *StackLayout) DrawOverlay(ctx *Context, dst *ebiten.Image) {
-	if !l.base.visible {
+func (l *Stack) DrawOverlay(ctx *uikit.Context, dst *ebiten.Image) {
+	if !l.IsVisible() {
 		return
 	}
 	// Overlay should escape clipping -> draw on dst (not on subimage)
 	for _, ch := range l.children {
-		if ow, ok := any(ch).(OverlayWidget); ok && ow.OverlayActive() {
+		if ow, ok := any(ch).(uikit.OverlayWidget); ok && ow.OverlayActive() {
 			ow.DrawOverlay(ctx, dst)
 		}
 		// Nested layouts will propagate overlays naturally.
-		if ll, ok := any(ch).(interface{ DrawOverlay(*Context, *ebiten.Image) }); ok {
+		if ll, ok := any(ch).(interface {
+			DrawOverlay(*uikit.Context, *ebiten.Image)
+		}); ok {
 			ll.DrawOverlay(ctx, dst)
 		}
 	}

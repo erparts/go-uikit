@@ -1,7 +1,6 @@
 package widget
 
 import (
-	"image"
 	"math"
 	"strings"
 
@@ -15,7 +14,7 @@ import (
 
 // TextArea is a multi-line text editor with internal vertical scrolling.
 type TextArea struct {
-	base uikit.Base
+	uikit.Base
 
 	text        string
 	placeholder string
@@ -35,7 +34,7 @@ func NewTextArea(theme *uikit.Theme, placeholder string) *TextArea {
 	cfg := uikit.NewWidgetBaseConfig(theme)
 
 	t := &TextArea{
-		base:          uikit.NewBase(cfg),
+		Base:          uikit.NewBase(cfg),
 		placeholder:   placeholder,
 		lines:         5,
 		CaretWidthPx:  2,
@@ -46,28 +45,27 @@ func NewTextArea(theme *uikit.Theme, placeholder string) *TextArea {
 	t.Scroll = uikit.NewScroller()
 	t.Scroll.Scrollbar = uikit.ScrollbarAlways // textarea typically shows it (content-dependent)
 
-	t.base.HeightCaculator = t.calculateHeight
+	t.Base.HeightCaculator = t.calculateHeight
 	return t
 }
 
 func (t *TextArea) calculateHeight() int {
-	met, _ := uikit.MetricsPx(t.base.Theme().Font, t.base.Theme().FontPx)
+	met, _ := uikit.MetricsPx(t.Theme().Font, t.Theme().FontPx)
 	lines := t.lines
 	if lines <= 0 {
 		lines = 5
 	}
 
-	controlH := t.base.Theme().PadY*2 + lines*met.Height
-	if controlH < t.base.Theme().ControlH {
-		controlH = t.base.Theme().ControlH
+	controlH := t.Theme().PadY*2 + lines*met.Height
+	if controlH < t.Theme().ControlH {
+		controlH = t.Theme().ControlH
 	}
 
 	return controlH
 }
 
-func (t *TextArea) Base() *uikit.Base { return &t.base }
-func (t *TextArea) Focusable() bool   { return true }
-func (t *TextArea) WantsIME() bool    { return true }
+func (t *TextArea) Focusable() bool { return true }
+func (t *TextArea) WantsIME() bool  { return true }
 
 func (t *TextArea) Text() string     { return t.text }
 func (t *TextArea) SetText(s string) { t.text = s }
@@ -80,24 +78,18 @@ func (t *TextArea) SetLines(n int) {
 	t.lines = n
 }
 
-func (t *TextArea) Measure() image.Rectangle { return t.base.Rect }
-
-func (t *TextArea) SetFrame(x, y, w int) {
-	t.base.SetFrame(x, y, w)
-}
-
 func (t *TextArea) Update(ctx *uikit.Context) {
-	if t.base.Rect.Dx() > 0 && t.base.Rect.Dy() == 0 {
-		t.SetFrame(t.base.Rect.Min.X, t.base.Rect.Min.Y, t.base.Rect.Dx())
+	r := t.Measure(false)
+	if r.Dx() > 0 && r.Dy() == 0 {
+		t.SetFrame(r.Min.X, r.Min.Y, r.Dx())
 	}
 
-	if t.base.IsFocused() && t.base.IsEnabled() {
+	if t.IsFocused() && t.IsEnabled() {
 		t.caretTick++
 	} else {
 		t.caretTick = 0
 	}
 
-	r := t.base.ControlRect(ctx.Theme)
 	content := common.Inset(r, ctx.Theme.PadX, ctx.Theme.PadY)
 
 	met, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
@@ -114,7 +106,7 @@ func (t *TextArea) Update(ctx *uikit.Context) {
 
 	t.Scroll.Update(ctx, content, contentH)
 
-	if !t.base.IsFocused() || !t.base.IsEnabled() {
+	if !t.IsFocused() || !t.IsEnabled() {
 		return
 	}
 
@@ -187,16 +179,16 @@ func (t *TextArea) backspace() {
 }
 
 func (t *TextArea) Draw(ctx *uikit.Context, dst *ebiten.Image) {
-	if t.base.Rect.Dx() > 0 && t.base.Rect.Dy() == 0 {
-		t.SetFrame(t.base.Rect.Min.X, t.base.Rect.Min.Y, t.base.Rect.Dx())
+	r := t.Measure(false)
+	if r.Dx() > 0 && r.Dy() == 0 {
+		t.SetFrame(r.Min.X, r.Min.Y, r.Dx())
 	}
 
-	r := t.base.ControlRect(ctx.Theme)
 	content := common.Inset(r, ctx.Theme.PadX, ctx.Theme.PadY)
 
-	t.base.DrawSurfece(ctx, dst, r)
-	t.base.DrawBoder(ctx, dst, r)
-	t.base.DrawFocus(ctx, dst, r)
+	t.DrawSurfece(ctx, dst, r)
+	t.DrawBoder(ctx, dst, r)
+	t.DrawFocus(ctx, dst, r)
 
 	// Clip to content area
 	sub := dst.SubImage(content).(*ebiten.Image)
@@ -213,7 +205,7 @@ func (t *TextArea) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	// Placeholder
 	drawStr := t.text
 	col := ctx.Theme.Text
-	if drawStr == "" && !t.base.IsFocused() {
+	if drawStr == "" && !t.IsFocused() {
 		drawStr = t.placeholder
 		col = ctx.Theme.MutedText
 	}
@@ -238,7 +230,7 @@ func (t *TextArea) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	t.Scroll.DrawBar(sub, ctx.Theme, content.Dx(), content.Dy(), contentH)
 
 	// Caret at end (approx). Draw on sub so it's clipped.
-	if t.base.IsFocused() && t.base.IsEnabled() && t.CaretWidthPx > 0 {
+	if t.IsFocused() && t.IsEnabled() && t.CaretWidthPx > 0 {
 		blinkFrames := int(math.Max(1, float64(t.CaretBlinkMs)/1000.0*60.0))
 		if (t.caretTick/blinkFrames)%2 == 0 {
 			lastLine := ""
@@ -279,5 +271,5 @@ func (t *TextArea) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 		}
 	}
 
-	t.base.DrawInvalid(ctx, dst, r)
+	t.DrawInvalid(ctx, dst, r)
 }

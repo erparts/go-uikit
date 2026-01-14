@@ -11,7 +11,7 @@ import (
 // Container is an empty widget that lets you render custom content inside a themed box.
 // It still participates in focus/invalid layout like any other widget.
 type Container struct {
-	base   uikit.Base
+	uikit.Base
 	height int
 
 	OnUpdate func(ctx *uikit.Context, content image.Rectangle)
@@ -19,12 +19,11 @@ type Container struct {
 }
 
 func NewContainer(theme *uikit.Theme) *Container {
-
 	cfg := uikit.NewWidgetBaseConfig(theme)
 
 	w := &Container{}
-	w.base = uikit.NewBase(cfg)
-	w.base.HeightCaculator = func() int {
+	w.Base = uikit.NewBase(cfg)
+	w.Base.HeightCaculator = func() int {
 		return w.height
 	}
 
@@ -35,26 +34,21 @@ func (c *Container) SetHeight(h int) {
 	c.height = h
 }
 
-func (c *Container) Base() *uikit.Base { return &c.base }
-func (c *Container) Focusable() bool   { return false }
-
-func (c *Container) SetFrame(x, y, w int) {
-	c.base.SetFrame(x, y, w)
-}
-func (c *Container) Measure() image.Rectangle { return c.base.Rect }
+func (c *Container) Focusable() bool { return false }
 
 func (c *Container) Update(ctx *uikit.Context) {
-	if c.base.Rect.Dy() == 0 {
-		c.base.SetFrame(c.base.Rect.Min.X, c.base.Rect.Min.Y, c.base.Rect.Dx())
+	r := c.Measure(false)
+	if r.Dy() == 0 {
+		c.SetFrame(r.Min.X, r.Min.Y, r.Dx())
 	}
 
 	if c.OnUpdate != nil {
-		c.OnUpdate(ctx, common.Inset(c.base.ControlRect(ctx.Theme), ctx.Theme.PadX, ctx.Theme.PadY))
+		c.OnUpdate(ctx, common.Inset(c.Measure(false), ctx.Theme.PadX, ctx.Theme.PadY))
 	}
 }
 
 func (c *Container) Draw(ctx *uikit.Context, dst *ebiten.Image) {
-	r := c.base.Draw(ctx, dst)
+	r := c.Base.Draw(ctx, dst)
 
 	content := common.Inset(r, ctx.Theme.PadX, ctx.Theme.PadY)
 	if c.OnDraw != nil {

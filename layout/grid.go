@@ -1,16 +1,14 @@
-package uikit
+package layout
 
 import (
-	"image"
-
-	"github.com/erparts/go-uikit/common"
+	"github.com/erparts/go-uikit"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-// GridLayout places children in a fixed column grid. If height > 0 it becomes scrollable and clips via SubImage.
-type GridLayout struct {
-	base     Base
-	children []Widget
+// Grid places children in a fixed column grid. If height > 0 it becomes scrollable and clips via SubImage.
+type Grid struct {
+	uikit.Base
+	children []uikit.Widget
 
 	Columns int
 
@@ -19,66 +17,61 @@ type GridLayout struct {
 	GapX int
 	GapY int
 
-	Scroll Scroller
+	Scroll uikit.Scroller
 
-	contentH int
+	height int
 
 	scratch *ebiten.Image
 }
 
-func NewGridLayout(theme *Theme) *GridLayout {
-	l := &GridLayout{base: NewBase(&WidgetBaseConfig{})}
+func NewGrid(theme *uikit.Theme) *Grid {
+
+	l := &Grid{}
 	l.Columns = 2
 	//l.PadX = theme.SpaceM
 	//l.PadY = theme.SpaceM
 	l.GapX = theme.SpaceS
 	l.GapY = theme.SpaceS
-	l.Scroll = NewScroller()
+	l.Scroll = uikit.NewScroller()
+
+	cfg := uikit.NewWidgetBaseConfig(theme)
+	l.Base = uikit.NewBase(cfg)
+	l.Base.HeightCaculator = func() int {
+		return l.height
+	}
+
 	return l
 }
 
-func (l *GridLayout) Base() *Base     { return &l.base }
-func (l *GridLayout) Focusable() bool { return false }
+func (l *Grid) Focusable() bool { return false }
 
-func (l *GridLayout) SetFrame(x, y, w int) {
-	l.base.Rect = image.Rect(x, y, x+w, y+l.base.Rect.Dy())
+func (l *Grid) SetHeight(h int) {
+	l.height = h
 }
 
-func (l *GridLayout) Measure() image.Rectangle {
-	return l.base.Rect
-}
+func (l *Grid) Children() []uikit.Widget      { return l.children }
+func (l *Grid) SetChildren(ws []uikit.Widget) { l.children = ws }
+func (l *Grid) Add(ws ...uikit.Widget)        { l.children = append(l.children, ws...) }
+func (l *Grid) Clear()                        { l.children = nil }
 
-func (l *GridLayout) SetHeight(h int) {
-	if h < 0 {
-		h = 0
-	}
-
-	l.base.Rect = common.ChangeRectangleHeight(l.base.Rect, h)
-}
-
-func (l *GridLayout) Children() []Widget      { return l.children }
-func (l *GridLayout) SetChildren(ws []Widget) { l.children = ws }
-func (l *GridLayout) Add(ws ...Widget)        { l.children = append(l.children, ws...) }
-func (l *GridLayout) Clear()                  { l.children = nil }
-
-func (l *GridLayout) Update(ctx *Context) {
+func (l *Grid) Update(ctx *uikit.Context) {
 	l.doLayout(ctx)
 
-	if l.base.Rect.Dy() > 0 {
-		l.Scroll.Update(ctx, l.base.Rect, l.contentH)
+	if l.Measure(false).Dy() > 0 {
+		l.Scroll.Update(ctx, l.Measure(false), l.height)
 		l.doLayout(ctx)
 	}
 
 	for _, ch := range l.children {
-		if !ch.Base().visible {
+		if !ch.IsVisible() {
 			continue
 		}
 		ch.Update(ctx)
 	}
 }
 
-func (l *GridLayout) doLayout(ctx *Context) {
-	vp := l.base.Rect
+func (l *Grid) doLayout(ctx *uikit.Context) {
+	vp := l.Measure(false)
 	cols := l.Columns
 	if cols <= 0 {
 		cols = 2
@@ -109,11 +102,11 @@ func (l *GridLayout) doLayout(ctx *Context) {
 	col := 0
 
 	for i, ch := range l.children {
-		if !ch.Base().visible {
+		if !ch.IsVisible() {
 			continue
 		}
 		ch.SetFrame(x, y, cellW)
-		r := ch.Measure()
+		r := ch.Measure(false)
 		if r.Dy() > rowMaxH {
 			rowMaxH = r.Dy()
 		}
@@ -138,21 +131,23 @@ func (l *GridLayout) doLayout(ctx *Context) {
 		contentH = vp.Dy()
 	}
 
-	l.contentH = contentH
+	l.SetHeight(contentH)
 }
 
-func (l *GridLayout) Draw(ctx *Context, dst *ebiten.Image) {
-	if !l.base.visible {
+func (l *Grid) Draw(ctx *uikit.Context, dst *ebiten.Image) {
+	if !l.IsVisible() {
 		return
 	}
-	vp := l.base.Rect
+
+	vp := l.Measure(false)
 	if vp.Dy() <= 0 {
 		for _, ch := range l.children {
-			if !ch.Base().visible {
+			if !ch.IsVisible() {
 				continue
 			}
 			ch.Draw(ctx, dst)
 		}
+
 		return
 	}
 
@@ -165,7 +160,7 @@ func (l *GridLayout) Draw(ctx *Context, dst *ebiten.Image) {
 	l.scratch.Clear()
 
 	for _, ch := range l.children {
-		if !ch.Base().visible {
+		if !ch.IsVisible() {
 			continue
 		}
 		ch.Draw(ctx, l.scratch)
@@ -177,18 +172,21 @@ func (l *GridLayout) Draw(ctx *Context, dst *ebiten.Image) {
 	dst.DrawImage(part, op)
 
 	sub := dst.SubImage(vp).(*ebiten.Image)
-	l.Scroll.DrawBar(sub, ctx.Theme, vp.Dx(), vp.Dy(), l.contentH)
+	l.Scroll.DrawBar(sub, ctx.Theme, vp.Dx(), vp.Dy(), l.height)
 }
 
-func (l *GridLayout) DrawOverlay(ctx *Context, dst *ebiten.Image) {
-	if !l.base.visible {
+func (l *Grid) DrawOverlay(ctx *uikit.Context, dst *ebiten.Image) {
+	if !l.IsVisible() {
 		return
 	}
+
 	for _, ch := range l.children {
-		if ow, ok := any(ch).(OverlayWidget); ok && ow.OverlayActive() {
+		if ow, ok := any(ch).(uikit.OverlayWidget); ok && ow.OverlayActive() {
 			ow.DrawOverlay(ctx, dst)
 		}
-		if ll, ok := any(ch).(interface{ DrawOverlay(*Context, *ebiten.Image) }); ok {
+		if ll, ok := any(ch).(interface {
+			DrawOverlay(*uikit.Context, *ebiten.Image)
+		}); ok {
 			ll.DrawOverlay(ctx, dst)
 		}
 	}

@@ -7,12 +7,22 @@ import (
 )
 
 type Widget interface {
-	Base() *Base
-	Focusable() bool
-	// SetFrame sets the widget position and width. Height is derived from the theme and widget state.
 	SetFrame(x, y, w int)
-	// Measure returns the current widget rectangle (including any extra height such as validation errors).
-	Measure() image.Rectangle
+
+	IsHovered() bool
+	SetHovered(bool)
+	IsPressed() bool
+	SetPressed(bool)
+	IsFocused() bool
+	SetFocused(bool)
+	IsEnabled() bool
+	SetEnabled(bool)
+	IsVisible() bool
+	SetVisible(bool)
+
+	Focusable() bool
+
+	Measure(bool) image.Rectangle
 	Update(ctx *Context)
 	Draw(ctx *Context, dst *ebiten.Image)
 }
@@ -21,6 +31,13 @@ type Widget interface {
 type OverlayWidget interface {
 	OverlayActive() bool
 	DrawOverlay(ctx *Context, dst *ebiten.Image)
+}
+
+type ValidableWidget interface {
+	IsValidable() bool
+	IsInvalid() (bool, string)
+	SetInvalid(err string)
+	ClearInvalid()
 }
 
 // TextWidget is implemented by widgets that want to control the platform IME (e.g., TextInput, TextArea).
@@ -37,7 +54,6 @@ type Hittable interface {
 // Layout is a Widget that owns children.
 type Layout interface {
 	Widget
-
 	Children() []Widget
 	SetChildren([]Widget)
 	Add(...Widget)

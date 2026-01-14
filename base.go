@@ -33,9 +33,8 @@ type Base struct {
 
 	HeightCaculator func() int
 
-	Rect image.Rectangle
+	rect image.Rectangle
 
-	controlH  int
 	hovered   bool
 	pressed   bool
 	focused   bool
@@ -54,33 +53,39 @@ func NewBase(cfg *WidgetBaseConfig) Base {
 	}
 }
 
-func (b *Base) ControlHeight(theme *Theme) int {
+func (b *Base) controlHeight(extended bool) int {
+	if b.theme == nil {
+		return 0
+	}
+
+	h := b.theme.ControlH
 	if b.HeightCaculator != nil {
-		return b.HeightCaculator()
+		h = b.HeightCaculator()
 	}
 
-	if b.controlH > 0 {
-		return b.controlH
+	if ok, _ := b.IsInvalid(); ok && extended {
+		met, _ := MetricsPx(b.theme.Font, b.theme.ErrorFontPx)
+		h += b.theme.ErrorGap + met.Height
 	}
-	if theme == nil {
-		panic("theme nil")
-	}
-	return theme.ControlH
+
+	return h
 }
 
-func (b *Base) ControlRect(theme *Theme) image.Rectangle {
-	return common.ChangeRectangleHeight(b.Rect, b.ControlHeight(theme))
+func (b *Base) Measure(extended bool) image.Rectangle {
+	r := common.ChangeRectangleHeight(b.rect, b.controlHeight(extended))
+	return r
 }
 
-func (b *Base) ErrorRect(theme *Theme) image.Rectangle {
-	if !(b.invalid && b.errorText != "") {
+func (b *Base) ErrorRect() image.Rectangle {
+	r := b.Measure(false)
+	if ok, _ := b.IsInvalid(); !ok {
 		return image.Rectangle{}
 	}
 
-	met, _ := MetricsPx(theme.Font, theme.ErrorFontPx)
-	y := b.Rect.Min.Y + b.ControlHeight(theme) + theme.ErrorGap
+	met, _ := MetricsPx(b.theme.Font, b.theme.ErrorFontPx)
+	h := b.theme.ErrorGap + met.Height
 
-	return image.Rect(b.Rect.Min.X, y, b.Rect.Max.X, y+met.Height)
+	return image.Rect(r.Min.X, r.Max.Y+b.theme.ErrorGap, r.Max.X, r.Max.Y+h)
 }
 
 func (b *Base) IsInvalid() (bool, string) {
@@ -104,54 +109,41 @@ func (b *Base) SetFrame(x, y, w int) {
 		w = 0
 	}
 
-	b.Rect = image.Rect(x, y, x+w, y+b.requiredHeight(b.theme))
+	b.rect = image.Rect(x, y, x+w, y+b.requiredHeight())
 }
 
-func (b *Base) requiredHeight(theme *Theme) int {
-	h := b.ControlHeight(theme)
-	if b.invalid && b.errorText != "" {
-		met, _ := MetricsPx(theme.Font, theme.ErrorFontPx)
-		h += theme.ErrorGap + met.Height
+func (b *Base) requiredHeight() int {
+	h := b.controlHeight(true)
+	if ok, _ := b.IsInvalid(); ok {
+		met, _ := MetricsPx(b.theme.Font, b.theme.ErrorFontPx)
+		h += b.theme.ErrorGap + met.Height
 	}
 
 	return h
 }
 
-func (b *Base) IsHovered() bool {
-	return b.hovered
-}
+func (b *Base) IsHovered() bool   { return b.hovered }
+func (b *Base) SetHovered(v bool) { b.hovered = v }
 
-func (b *Base) IsPressed() bool {
-	return b.pressed
-}
+func (b *Base) IsPressed() bool   { return b.pressed }
+func (b *Base) SetPressed(v bool) { b.pressed = v }
 
-func (b *Base) IsFocused() bool {
-	return b.focused
-}
+func (b *Base) IsFocused() bool   { return b.focused }
+func (b *Base) SetFocused(v bool) { b.focused = v }
 
-func (b *Base) IsEnabled() bool {
-	return b.enabled
-}
+func (b *Base) IsEnabled() bool   { return b.enabled }
+func (b *Base) SetEnabled(v bool) { b.enabled = v }
 
-func (b *Base) SetEnabled(v bool) {
-	b.enabled = v
-}
-
-func (b *Base) IsVisible() bool {
-	return b.visible
-}
-
-func (b *Base) SetVisible(v bool) {
-	b.visible = v
-}
+func (b *Base) IsVisible() bool   { return b.visible }
+func (b *Base) SetVisible(v bool) { b.visible = v }
 
 func (c *Base) Draw(ctx *Context, dst *ebiten.Image) image.Rectangle {
 	c.theme = ctx.Theme
-	if c.Rect.Dy() == 0 {
-		c.SetFrame(c.Rect.Min.X, c.Rect.Min.Y, c.Rect.Dy())
+	if c.rect.Dy() == 0 {
+		c.SetFrame(c.rect.Min.X, c.rect.Min.Y, c.rect.Dy())
 	}
 
-	r := c.ControlRect(ctx.Theme)
+	r := c.Measure(false)
 	c.DrawSurfece(ctx, dst, r)
 	c.DrawBoder(ctx, dst, r)
 	c.DrawFocus(ctx, dst, r)
@@ -213,7 +205,7 @@ func (c *Base) DrawInvalid(ctx *Context, dst *ebiten.Image, r image.Rectangle) {
 		return
 	}
 
-	err := c.ErrorRect(ctx.Theme)
+	err := c.ErrorRect()
 	drawErrorText(ctx, dst, err, c.errorText)
 }
 

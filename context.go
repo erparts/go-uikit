@@ -1,8 +1,6 @@
 package uikit
 
 import (
-	"image/color"
-
 	"github.com/erparts/go-uikit/common"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -25,13 +23,11 @@ type Context struct {
 	prevTouches map[ebiten.TouchID]struct{}
 }
 
-func NewContext(theme *Theme, renderer *etxt.Renderer, ime IMEBridge) *Context {
+func NewContext(theme *Theme, root Layout, renderer *etxt.Renderer, ime IMEBridge) *Context {
 	// Ensure renderer style is consistent with the theme.
 	renderer.SetFont(theme.Font)
 	renderer.SetSize(float64(theme.FontPx))
 
-	root := NewStackLayout(theme)
-	root.background = color.RGBA{255, 0, 0, 255}
 	return &Context{
 		Theme:       theme,
 		Text:        renderer,
@@ -85,21 +81,19 @@ func (c *Context) rebuildWidgets() {
 		if w == nil {
 			return
 		}
+
 		c.widgets = append(c.widgets, w)
-		if l, ok := any(w).(Layout); ok {
-			for _, ch := range l.Children() {
-				walk(ch)
-			}
-			return
-		}
-		// Support nested layouts even if not typed as Layout (defensive)
+
 		if hw, ok := any(w).(interface{ Children() []Widget }); ok {
 			for _, ch := range hw.Children() {
 				walk(ch)
 			}
 		}
 	}
-	walk(c.root)
+
+	for _, w := range c.root.Children() {
+		walk(w)
+	}
 }
 
 func (c *Context) Pointer() PointerStatus {
@@ -197,7 +191,7 @@ func (c *Context) focusNext() {
 	start := c.focus
 	for i := 0; i < len(c.widgets); i++ {
 		idx := (start + 1 + i) % len(c.widgets)
-		if c.widgets[idx].Base().visible && c.widgets[idx].Base().IsEnabled() && c.widgets[idx].Focusable() {
+		if c.widgets[idx].IsVisible() && c.widgets[idx].IsEnabled() && c.widgets[idx].Focusable() {
 			c.SetFocus(c.widgets[idx])
 			return
 		}
@@ -215,7 +209,7 @@ func (c *Context) focusPrev() {
 		for idx < 0 {
 			idx += len(c.widgets)
 		}
-		if c.widgets[idx].Base().visible && c.widgets[idx].Base().IsEnabled() && c.widgets[idx].Focusable() {
+		if c.widgets[idx].IsVisible() && c.widgets[idx].IsEnabled() && c.widgets[idx].Focusable() {
 			c.SetFocus(c.widgets[idx])
 			return
 		}
@@ -282,20 +276,21 @@ func (c *Context) widgetHit(w Widget, x, y int) bool {
 		return h.HitTest(c, x, y)
 	}
 
-	return common.Contains(w.Base().ControlRect(c.Theme), x, y)
+	return common.Contains(w.Measure(false), x, y)
 }
 
 func (c *Context) topmostAt(x, y int) Widget {
 	for i := len(c.widgets) - 1; i >= 0; i-- {
 		w := c.widgets[i]
-		b := w.Base()
-		if !b.visible || !b.IsEnabled() {
+		if !w.IsVisible() || !w.IsEnabled() {
 			continue
 		}
+
 		if c.widgetHit(w, x, y) {
 			return w
 		}
 	}
+
 	return nil
 }
 
@@ -315,7 +310,7 @@ func (c *Context) Update() {
 
 	if c.ptr.IsJustDown {
 		w := c.topmostAt(c.ptr.X, c.ptr.Y)
-		if w != nil && w.Focusable() && w.Base().IsEnabled() {
+		if w != nil && w.Focusable() && w.IsEnabled() {
 			c.SetFocus(w)
 		} else {
 			c.SetFocus(nil)
@@ -333,33 +328,32 @@ func (c *Context) Update() {
 	}
 
 	for _, w := range c.widgets {
-		b := w.Base()
-		if !b.visible {
+		if !w.IsVisible() {
 			continue
 		}
 
-		b.hovered = (hoverTarget == w)
+		w.SetHovered(hoverTarget == w)
 
 		// Pointer down routed to the chosen target.
-		if c.ptr.IsJustDown && target == w && b.IsEnabled() {
-			b.pressed = true
+		if c.ptr.IsJustDown && target == w && w.IsEnabled() {
+			w.SetPressed(true)
 			c.dispatch(w, Event{Type: EventPointerDown, X: c.ptr.X, Y: c.ptr.Y})
 		}
 
 		// Pointer up: release + click if pointer ends inside widget.
 		if c.ptr.IsJustUp {
-			wasPressed := b.pressed
+			wasPressed := w.IsPressed()
 			if wasPressed {
 				c.dispatch(w, Event{Type: EventPointerUp, X: c.ptr.X, Y: c.ptr.Y})
-				if b.IsEnabled() && c.widgetHit(w, c.ptr.X, c.ptr.Y) {
+				if w.IsEnabled() && c.widgetHit(w, c.ptr.X, c.ptr.Y) {
 					c.dispatch(w, Event{Type: EventClick, X: c.ptr.X, Y: c.ptr.Y})
 				}
 			}
 
-			b.pressed = false
+			w.SetPressed(false)
 		}
 
-		b.focused = (c.Focused() == w) && b.IsEnabled() && w.Focusable()
+		w.SetFocused((c.Focused() == w) && w.IsEnabled() && w.Focusable())
 	}
 }
 

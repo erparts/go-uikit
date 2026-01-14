@@ -12,7 +12,7 @@ import (
 // Select is a simple dropdown selector.
 // The dropdown is rendered as an overlay (does NOT change layout of other widgets).
 type Select struct {
-	base uikit.Base
+	uikit.Base
 
 	options []string
 	index   int
@@ -30,15 +30,14 @@ func NewSelect(theme *uikit.Theme, options []string) *Select {
 	cfg := uikit.NewWidgetBaseConfig(theme)
 
 	return &Select{
-		base:       uikit.NewBase(cfg),
+		Base:       uikit.NewBase(cfg),
 		options:    options,
 		index:      0,
 		MaxVisible: 5,
 	}
 }
 
-func (s *Select) Base() *uikit.Base { return &s.base }
-func (s *Select) Focusable() bool   { return true }
+func (s *Select) Focusable() bool { return true }
 
 func (s *Select) OverlayActive() bool { return s.open }
 
@@ -72,14 +71,8 @@ func (s *Select) SetIndex(i int) {
 	s.index = i
 }
 
-func (s *Select) SetFrame(x, y, w int) {
-	s.base.SetFrame(x, y, w)
-}
-
-func (s *Select) Measure() image.Rectangle { return s.base.Rect }
-
 func (s *Select) listRect(ctx *uikit.Context) image.Rectangle {
-	ctrl := s.base.ControlRect(ctx.Theme)
+	ctrl := s.Measure(false)
 	n := len(s.options)
 	max := s.MaxVisible
 	if max <= 0 {
@@ -94,7 +87,7 @@ func (s *Select) listRect(ctx *uikit.Context) image.Rectangle {
 }
 
 func (s *Select) HitTest(ctx *uikit.Context, x, y int) bool {
-	ctrl := s.base.ControlRect(ctx.Theme)
+	ctrl := s.Measure(false)
 	if common.Contains(ctrl, x, y) {
 		return true
 	}
@@ -107,15 +100,15 @@ func (s *Select) HitTest(ctx *uikit.Context, x, y int) bool {
 }
 
 func (s *Select) Update(ctx *uikit.Context) {
-	if s.base.Rect.Dx() > 0 && s.base.Rect.Dy() == 0 {
-		s.base.SetFrame(s.base.Rect.Min.X, s.base.Rect.Min.Y, s.base.Rect.Dx())
+	r := s.Measure(false)
+	if r.Dx() > 0 && r.Dy() == 0 {
+		s.SetFrame(r.Min.X, r.Min.Y, r.Dx())
 	}
 
-	if !s.base.IsEnabled() {
+	if !s.IsEnabled() {
 		return
 	}
 
-	ctrl := s.base.ControlRect(ctx.Theme)
 	list := s.listRect(ctx)
 
 	//func (c *Context) Pointer() (x, y int, down, justDown, justUp, isTouch bool) {
@@ -123,7 +116,7 @@ func (s *Select) Update(ctx *uikit.Context) {
 	ptr := ctx.Pointer()
 
 	// Toggle open on click in control.
-	if ptr.IsJustDown && common.Contains(ctrl, ptr.X, ptr.Y) {
+	if ptr.IsJustDown && common.Contains(r, ptr.X, ptr.Y) {
 		s.open = !s.open
 	}
 
@@ -136,7 +129,7 @@ func (s *Select) Update(ctx *uikit.Context) {
 				s.index = idx
 			}
 			s.open = false
-		} else if !common.Contains(ctrl, ptr.X, ptr.Y) {
+		} else if !common.Contains(r, ptr.X, ptr.Y) {
 			s.open = false
 		}
 	}
@@ -162,9 +155,9 @@ func (s *Select) Update(ctx *uikit.Context) {
 }
 
 func (s *Select) Draw(ctx *uikit.Context, dst *ebiten.Image) {
-	s.base.Draw(ctx, dst)
+	s.Base.Draw(ctx, dst)
 
-	r := s.base.ControlRect(ctx.Theme)
+	r := s.Base.Measure(false)
 
 	met, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 	baselineY := r.Min.Y + (r.Dy()-met.Height)/2 + met.Ascent
@@ -189,8 +182,8 @@ func (s *Select) DrawOverlay(ctx *uikit.Context, dst *ebiten.Image) {
 	}
 
 	list := s.listRect(ctx)
-	s.base.DrawRoundedRect(dst, list, ctx.Theme.Radius, ctx.Theme.Surface)
-	s.base.DrawRoundedBorder(dst, list, ctx.Theme.Radius, ctx.Theme.BorderW, ctx.Theme.Border)
+	s.Base.DrawRoundedRect(dst, list, ctx.Theme.Radius, ctx.Theme.Surface)
+	s.Base.DrawRoundedBorder(dst, list, ctx.Theme.Radius, ctx.Theme.BorderW, ctx.Theme.Border)
 
 	met, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 
@@ -205,7 +198,7 @@ func (s *Select) DrawOverlay(ctx *uikit.Context, dst *ebiten.Image) {
 		row := image.Rect(list.Min.X, y, list.Max.X, y+ctx.Theme.ControlH)
 
 		if idx == s.index {
-			s.base.DrawRoundedRect(dst, row, 0, ctx.Theme.SurfaceHover)
+			s.Base.DrawRoundedRect(dst, row, 0, ctx.Theme.SurfaceHover)
 		}
 
 		bY := row.Min.Y + (row.Dy()-met.Height)/2 + met.Ascent

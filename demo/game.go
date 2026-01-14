@@ -12,12 +12,13 @@ import (
 	"golang.org/x/image/font/sfnt"
 
 	"github.com/erparts/go-uikit"
+	"github.com/erparts/go-uikit/layout"
 	"github.com/erparts/go-uikit/widget"
 )
 
 type Game struct {
-	stack    *uikit.StackLayout
-	grid     *uikit.GridLayout
+	stack    *layout.Stack
+	grid     *layout.Grid
 	useGrid  bool
 	contentH int
 	ime      uikit.IMEBridge
@@ -79,9 +80,10 @@ func (g *Game) initOnce() {
 
 	g.theme = uikit.NewTheme(f, 20)
 
-	g.ctx = uikit.NewContext(g.theme, g.renderer, g.ime)
-	g.stack = uikit.NewStackLayout(g.theme)
-	g.grid = uikit.NewGridLayout(g.theme)
+	root := layout.NewStack(g.theme)
+	g.ctx = uikit.NewContext(g.theme, root, g.renderer, g.ime)
+	g.stack = layout.NewStack(g.theme)
+	g.grid = layout.NewGrid(g.theme)
 
 	g.title = widget.NewLabel(g.theme, "UI Kit Demo (TPS: %0.2f - FPS: %0.2f")
 	g.focusInfo = widget.NewLabel(g.theme, "")
@@ -103,7 +105,7 @@ func (g *Game) initOnce() {
 	g.sel = widget.NewSelect(g.theme, []string{"Option A", "Option B", "Option C", "Option D", "Option E", "Option F"})
 
 	g.box = widget.NewContainer(g.theme)
-	g.box.SetHeight(200)
+	g.box.SetHeight(1000)
 	g.box.OnDraw = func(ctx *uikit.Context, dst *ebiten.Image, content image.Rectangle) {
 
 		lines := []string{
@@ -219,8 +221,7 @@ func (g *Game) Update() error {
 
 	// Header
 	g.ctx.Root().SetFrame(x, y, w)
-	g.title.SetFrame(x, y, w)
-	y += g.title.Measure().Dy() + g.theme.SpaceS
+	y += g.title.Measure(false).Dy() + g.theme.SpaceS
 
 	fw := g.ctx.Focused()
 	if fw == nil {
@@ -228,11 +229,11 @@ func (g *Game) Update() error {
 	} else {
 		g.focusInfo.SetText(fmt.Sprintf("Focused: %T", fw))
 	}
-	g.focusInfo.SetFrame(x, y, w)
-	y += g.focusInfo.Measure().Dy() + g.theme.SpaceM
+
+	y += g.focusInfo.Measure(false).Dy() + g.theme.SpaceM
 
 	// Scrollable viewport for the content widgets
-	footerH := g.footer.Measure().Dy()
+	footerH := g.footer.Measure(false).Dy()
 	viewportH := g.winH - y - g.theme.SpaceM - footerH - g.theme.SpaceM
 	if viewportH < g.theme.ControlH {
 		viewportH = g.theme.ControlH
@@ -245,22 +246,22 @@ func (g *Game) Update() error {
 
 	// Demo validations
 	if g.txtB.Text() == "" {
-		g.txtB.Base().SetInvalid("Required")
+		g.txtB.SetInvalid("Required")
 	} else {
-		g.txtB.Base().ClearInvalid()
+		g.txtB.ClearInvalid()
 	}
 
 	if strings.TrimSpace(g.ta.Text()) == "" {
-		g.txtB.Base().SetInvalid("Required")
+		g.txtB.SetInvalid("Required")
 	} else {
-		g.txtB.Base().ClearInvalid()
+		g.txtB.ClearInvalid()
 	}
 
 	selVal := g.sel.Value()
 	if selVal == "Option A" || selVal == "" {
-		g.sel.Base().SetInvalid("Option A is not allowed")
+		g.sel.SetInvalid("Option A is not allowed")
 	} else {
-		g.txtB.Base().ClearInvalid()
+		g.txtB.ClearInvalid()
 	}
 
 	// Enable button based on checkbox state
@@ -269,11 +270,11 @@ func (g *Game) Update() error {
 
 	// Swap root layout (stack or grid)
 	if g.useGrid {
-		g.grid.Base().SetVisible(true)
-		g.stack.Base().SetVisible(false)
+		g.grid.SetVisible(true)
+		g.stack.SetVisible(false)
 	} else {
-		g.stack.Base().SetVisible(true)
-		g.grid.Base().SetVisible(false)
+		g.stack.SetVisible(true)
+		g.grid.SetVisible(false)
 	}
 
 	// Update widgets (events, focus, etc.)

@@ -11,7 +11,7 @@ import (
 )
 
 type Checkbox struct {
-	base uikit.Base
+	uikit.Base
 
 	label   string
 	checked bool
@@ -21,54 +21,45 @@ func NewCheckbox(theme *uikit.Theme, label string) *Checkbox {
 	cfg := uikit.NewWidgetBaseConfig(theme)
 
 	return &Checkbox{
-		base:  uikit.NewBase(cfg),
+		Base:  uikit.NewBase(cfg),
 		label: label,
 	}
 }
 
-func (c *Checkbox) Base() *uikit.Base { return &c.base }
-func (c *Checkbox) Focusable() bool   { return true }
-
-func (c *Checkbox) SetFrame(x, y, w int) {
-	c.base.SetFrame(x, y, w)
-}
-
-func (c *Checkbox) Measure() image.Rectangle { return c.base.Rect }
-
-func (c *Checkbox) SetEnabled(v bool) { c.base.SetEnabled(v) }
-func (c *Checkbox) SetVisible(v bool) { c.base.SetVisible(v) }
+func (c *Checkbox) Focusable() bool { return true }
 
 func (c *Checkbox) SetChecked(v bool) { c.checked = v }
 func (c *Checkbox) Checked() bool     { return c.checked }
 
 func (c *Checkbox) HandleEvent(ctx *uikit.Context, e uikit.Event) {
-	if !c.base.IsEnabled() {
+	if !c.IsEnabled() {
 		return
 	}
+
 	if e.Type == uikit.EventClick {
 		c.checked = !c.checked
 	}
 }
 
 func (c *Checkbox) Update(ctx *uikit.Context) {
-	if c.base.Rect.Dy() == 0 {
-		c.base.SetFrame(c.base.Rect.Min.X, c.base.Rect.Min.Y, c.base.Rect.Dx())
+	r := c.Measure(false)
+	if r.Dy() == 0 {
+		c.SetFrame(r.Min.X, r.Min.Y, r.Dx())
 	}
 
-	if !c.base.IsEnabled() {
+	if !c.IsEnabled() {
 		return
 	}
 
-	// Keyboard toggle
-	if c.base.IsFocused() && inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+	if c.IsFocused() && inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 		c.checked = !c.checked
 	}
 }
 
 func (c *Checkbox) Draw(ctx *uikit.Context, dst *ebiten.Image) {
-	c.base.Draw(ctx, dst)
+	c.Base.Draw(ctx, dst)
 
-	r := c.base.ControlRect(ctx.Theme)
+	r := c.Measure(false)
 
 	// Checkbox box (left)
 	content := common.Inset(r, ctx.Theme.PadX, ctx.Theme.PadY)
@@ -80,8 +71,8 @@ func (c *Checkbox) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	boxY := r.Min.Y + (r.Dy()-boxSize)/2
 	box := image.Rect(content.Min.X, boxY, content.Min.X+boxSize, boxY+boxSize)
 
-	c.base.DrawRoundedRect(dst, box, int(float64(boxSize)*0.25), ctx.Theme.Bg)
-	c.base.DrawRoundedBorder(dst, box, int(float64(boxSize)*0.25), ctx.Theme.BorderW, ctx.Theme.Border)
+	c.Base.DrawRoundedRect(dst, box, int(float64(boxSize)*0.25), ctx.Theme.Bg)
+	c.Base.DrawRoundedBorder(dst, box, int(float64(boxSize)*0.25), ctx.Theme.BorderW, ctx.Theme.Border)
 
 	if c.checked {
 		// Draw a clean checkmark (two strokes), proportional.
@@ -106,7 +97,7 @@ func (c *Checkbox) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	tx := box.Max.X + ctx.Theme.SpaceS
 
 	col := ctx.Theme.Text
-	if !c.base.IsEnabled() {
+	if !c.IsEnabled() {
 		col = ctx.Theme.Disabled
 	}
 

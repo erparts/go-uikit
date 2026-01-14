@@ -1,7 +1,6 @@
 package widget
 
 import (
-	"image"
 	"math"
 
 	"github.com/erparts/go-uikit"
@@ -14,7 +13,7 @@ import (
 // TextInput is a single-line input box (no label).
 // Height and proportions come from Theme; external layout controls only width.
 type TextInput struct {
-	base uikit.Base
+	uikit.Base
 
 	// Value / defaults
 	text                 string
@@ -35,7 +34,7 @@ func NewTextInput(theme *uikit.Theme, placeholder string) *TextInput {
 	cfg := uikit.NewWidgetBaseConfig(theme)
 
 	return &TextInput{
-		base:          uikit.NewBase(cfg),
+		Base:          uikit.NewBase(cfg),
 		placeholder:   placeholder,
 		CaretWidthPx:  2,
 		CaretBlinkMs:  600,
@@ -43,18 +42,8 @@ func NewTextInput(theme *uikit.Theme, placeholder string) *TextInput {
 	}
 }
 
-func (t *TextInput) Base() *uikit.Base { return &t.base }
-func (t *TextInput) Focusable() bool   { return true }
-func (t *TextInput) WantsIME() bool    { return true }
-
-func (t *TextInput) SetFrame(x, y, w int) {
-	t.base.SetFrame(x, y, w)
-}
-
-func (t *TextInput) Measure() image.Rectangle { return t.base.Rect }
-
-func (t *TextInput) SetEnabled(v bool) { t.base.SetEnabled(v) }
-func (t *TextInput) SetVisible(v bool) { t.base.SetVisible(v) }
+func (t *TextInput) Focusable() bool { return true }
+func (t *TextInput) WantsIME() bool  { return true }
 
 func (t *TextInput) Text() string { return t.text }
 
@@ -77,19 +66,18 @@ func (t *TextInput) HandleEvent(ctx *uikit.Context, e uikit.Event) {
 }
 
 func (t *TextInput) Update(ctx *uikit.Context) {
-	if t.base.Rect.Dy() == 0 {
-		t.base.SetFrame(t.base.Rect.Min.X, t.base.Rect.Min.Y, t.base.Rect.Max.X)
+	r := t.Measure(false)
+	if r.Dy() == 0 {
+		t.SetFrame(r.Min.X, r.Min.Y, r.Max.X)
 	}
 
-	// Tick caret
-	if t.base.IsFocused() && t.base.IsEnabled() {
+	if t.IsFocused() && t.IsEnabled() {
 		t.caretTick++
 	} else {
 		t.caretTick = 0
 	}
 
-	// If not focused, ignore input
-	if !t.base.IsFocused() || !t.base.IsEnabled() {
+	if !t.IsFocused() || !t.IsEnabled() {
 		return
 	}
 
@@ -135,9 +123,9 @@ func (t *TextInput) backspace() {
 }
 
 func (t *TextInput) Draw(ctx *uikit.Context, dst *ebiten.Image) {
-	t.base.Draw(ctx, dst)
+	t.Base.Draw(ctx, dst)
 
-	r := t.base.ControlRect(ctx.Theme)
+	r := t.Measure(false)
 
 	content := common.Inset(r, ctx.Theme.PadX, ctx.Theme.PadY)
 
@@ -148,7 +136,7 @@ func (t *TextInput) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	// Text / placeholder
 	drawStr := t.text
 	textCol := ctx.Theme.Text
-	if drawStr == "" && !t.base.IsFocused() {
+	if drawStr == "" && !t.IsFocused() {
 		drawStr = t.placeholder
 		textCol = ctx.Theme.MutedText
 	}
@@ -165,7 +153,7 @@ func (t *TextInput) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	ctx.Text.Draw(dst, drawStr, content.Min.X+shiftX, baselineY)
 
 	// Caret (rect, no extra space)
-	if t.base.IsFocused() && t.base.IsEnabled() && t.CaretWidthPx > 0 {
+	if t.IsFocused() && t.IsEnabled() && t.CaretWidthPx > 0 {
 		blinkFrames := int(math.Max(1, float64(t.CaretBlinkMs)/1000.0*60.0))
 		if (t.caretTick/blinkFrames)%2 == 0 {
 			wBefore := uikit.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, t.text)
