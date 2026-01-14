@@ -45,7 +45,24 @@ func NewTextArea(theme *uikit.Theme, placeholder string) *TextArea {
 
 	t.Scroll = uikit.NewScroller()
 	t.Scroll.Scrollbar = uikit.ScrollbarAlways // textarea typically shows it (content-dependent)
+
+	t.base.HeightCaculator = t.calculateHeight
 	return t
+}
+
+func (t *TextArea) calculateHeight() int {
+	met, _ := uikit.MetricsPx(t.base.Theme().Font, t.base.Theme().FontPx)
+	lines := t.lines
+	if lines <= 0 {
+		lines = 5
+	}
+
+	controlH := t.base.Theme().PadY*2 + lines*met.Height
+	if controlH < t.base.Theme().ControlH {
+		controlH = t.base.Theme().ControlH
+	}
+
+	return controlH
 }
 
 func (t *TextArea) Base() *uikit.Base { return &t.base }
@@ -59,34 +76,14 @@ func (t *TextArea) SetLines(n int) {
 	if n < 1 {
 		n = 1
 	}
+
 	t.lines = n
 }
 
 func (t *TextArea) Measure() image.Rectangle { return t.base.Rect }
 
 func (t *TextArea) SetFrame(x, y, w int) {
-	met, _ := uikit.MetricsPx(t.base.Theme().Font, t.base.Theme().FontPx)
-	lines := t.lines
-	if lines <= 0 {
-		lines = 5
-	}
-
-	controlH := t.base.Theme().PadY*2 + lines*met.Height
-	if controlH < t.base.Theme().ControlH {
-		controlH = t.base.Theme().ControlH
-	}
-
-	totalH := controlH
-	if ok, errTxt := t.base.IsInvalid(); ok && errTxt != "" {
-		em, _ := uikit.MetricsPx(t.base.Theme().Font, t.base.Theme().ErrorFontPx)
-		totalH += t.base.Theme().ErrorGap + em.Height
-	}
-
-	if w < 0 {
-		w = 0
-	}
-
-	t.base.Rect = image.Rect(x, y, x+w, y+totalH)
+	t.base.SetFrame(x, y, w)
 }
 
 func (t *TextArea) Update(ctx *uikit.Context) {
@@ -100,24 +97,23 @@ func (t *TextArea) Update(ctx *uikit.Context) {
 		t.caretTick = 0
 	}
 
-	// Compute content viewport and metrics
-	_, content := t.controlAndContentRects(ctx)
+	r := t.base.ControlRect(ctx.Theme)
+	content := common.Inset(r, ctx.Theme.PadX, ctx.Theme.PadY)
+
 	met, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 
-	// Compute content height (scrollable)
 	lineCount := 1
 	if t.text != "" {
 		lineCount = 1 + strings.Count(t.text, "\n")
 	}
+
 	contentH := lineCount * met.Height
 	if contentH < content.Dy() {
 		contentH = content.Dy()
 	}
 
-	// Update scroller using the content rect as viewport
 	t.Scroll.Update(ctx, content, contentH)
 
-	// Editing only when focused
 	if !t.base.IsFocused() || !t.base.IsEnabled() {
 		return
 	}
@@ -190,44 +186,13 @@ func (t *TextArea) backspace() {
 	t.text = string(rs[:len(rs)-1])
 }
 
-func (t *TextArea) controlAndContentRects(ctx *uikit.Context) (ctrl image.Rectangle, content image.Rectangle) {
-	r := t.base.Rect
-
-	errorH := 0
-	if ok, errTxt := t.base.IsInvalid(); ok && errTxt != "" {
-		em, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.ErrorFontPx)
-		errorH = ctx.Theme.ErrorGap + em.Height
-	}
-
-	ctrlH := r.Dy() - errorH
-	if ctrlH < 0 {
-		ctrlH = 0
-	}
-
-	ctrl = image.Rect(r.Min.X, r.Min.Y, r.Max.X, r.Min.Y+ctrlH)
-	content = common.Inset(ctrl, ctx.Theme.PadX, ctx.Theme.PadY)
-	return ctrl, content
-}
-
-func (t *TextArea) errorRect(ctx *uikit.Context) image.Rectangle {
-	if ok, _ := t.base.IsInvalid(); !ok {
-		return image.Rectangle{}
-	}
-
-	ctrl, _ := t.controlAndContentRects(ctx)
-
-	em, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.ErrorFontPx)
-
-	top := ctrl.Max.Y + ctx.Theme.ErrorGap
-	return image.Rect(ctrl.Min.X, top, ctrl.Max.X, top+em.Height)
-}
-
 func (t *TextArea) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	if t.base.Rect.Dx() > 0 && t.base.Rect.Dy() == 0 {
 		t.SetFrame(t.base.Rect.Min.X, t.base.Rect.Min.Y, t.base.Rect.Dx())
 	}
 
-	r, content := t.controlAndContentRects(ctx)
+	r := t.base.ControlRect(ctx.Theme)
+	content := common.Inset(r, ctx.Theme.PadX, ctx.Theme.PadY)
 
 	t.base.DrawSurfece(ctx, dst, r)
 	t.base.DrawBoder(ctx, dst, r)
@@ -257,7 +222,6 @@ func (t *TextArea) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	lines := strings.Split(drawStr, "\n")
 	for i, line := range lines {
 		y := startY + i*met.Height + met.Ascent
-		// IMPORTANT: SubImage keeps absolute coordinates -> use (ox, oy)
 		ctx.Text.Draw(sub, line, ox, oy+y)
 	}
 
@@ -316,13 +280,4 @@ func (t *TextArea) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	}
 
 	t.base.DrawInvalid(ctx, dst, r)
-}
-
-func (t *TextArea) HitTest(ctx *uikit.Context, x, y int) bool {
-	ctrl, _ := t.controlAndContentRects(ctx)
-	if common.Contains(ctrl, x, y) {
-		return true
-	}
-
-	return false
 }

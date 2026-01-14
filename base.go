@@ -31,6 +31,8 @@ type Base struct {
 	cfg   *WidgetBaseConfig
 	theme *Theme
 
+	HeightCaculator func() int
+
 	Rect image.Rectangle
 
 	controlH  int
@@ -53,6 +55,10 @@ func NewBase(cfg *WidgetBaseConfig) Base {
 }
 
 func (b *Base) ControlHeight(theme *Theme) int {
+	if b.HeightCaculator != nil {
+		return b.HeightCaculator()
+	}
+
 	if b.controlH > 0 {
 		return b.controlH
 	}
@@ -60,16 +66,6 @@ func (b *Base) ControlHeight(theme *Theme) int {
 		panic("theme nil")
 	}
 	return theme.ControlH
-}
-
-func (b *Base) RequiredHeight(theme *Theme) int {
-	h := b.ControlHeight(theme)
-	if b.invalid && b.errorText != "" {
-		met, _ := MetricsPx(theme.Font, theme.ErrorFontPx)
-		h += theme.ErrorGap + met.Height
-	}
-
-	return h
 }
 
 func (b *Base) ControlRect(theme *Theme) image.Rectangle {
@@ -108,7 +104,17 @@ func (b *Base) SetFrame(x, y, w int) {
 		w = 0
 	}
 
-	b.Rect = image.Rect(x, y, x+w, y+b.RequiredHeight(b.theme))
+	b.Rect = image.Rect(x, y, x+w, y+b.requiredHeight(b.theme))
+}
+
+func (b *Base) requiredHeight(theme *Theme) int {
+	h := b.ControlHeight(theme)
+	if b.invalid && b.errorText != "" {
+		met, _ := MetricsPx(theme.Font, theme.ErrorFontPx)
+		h += theme.ErrorGap + met.Height
+	}
+
+	return h
 }
 
 func (b *Base) IsHovered() bool {

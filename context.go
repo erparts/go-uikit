@@ -110,6 +110,7 @@ func (c *Context) dispatch(w Widget, e Event) {
 	if w == nil {
 		return
 	}
+
 	if h, ok := any(w).(EventHandler); ok {
 		h.HandleEvent(c, e)
 	}
@@ -133,6 +134,7 @@ func (c *Context) SetFocus(w Widget) {
 	if old != nil && (newIdx != c.focus) {
 		c.dispatch(old, Event{Type: EventFocusLost})
 	}
+
 	c.focus = newIdx
 	newW := c.Focused()
 	if newW != nil && newW != old {

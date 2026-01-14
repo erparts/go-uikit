@@ -83,7 +83,7 @@ func (g *Game) initOnce() {
 	g.stack = uikit.NewStackLayout(g.theme)
 	g.grid = uikit.NewGridLayout(g.theme)
 
-	g.title = widget.NewLabel(g.theme, "UI Kit Demo")
+	g.title = widget.NewLabel(g.theme, "UI Kit Demo (TPS: %0.2f - FPS: %0.2f")
 	g.focusInfo = widget.NewLabel(g.theme, "")
 	g.exampleLabel = widget.NewLabel(g.theme, "Label example: static helper text")
 
@@ -103,6 +103,7 @@ func (g *Game) initOnce() {
 	g.sel = widget.NewSelect(g.theme, []string{"Option A", "Option B", "Option C", "Option D", "Option E", "Option F"})
 
 	g.box = widget.NewContainer(g.theme)
+	g.box.SetHeight(200)
 	g.box.OnDraw = func(ctx *uikit.Context, dst *ebiten.Image, content image.Rectangle) {
 
 		lines := []string{
@@ -204,6 +205,9 @@ func (g *Game) Layout(outW, outH int) (int, int) {
 
 func (g *Game) Update() error {
 	g.initOnce()
+
+	title := fmt.Sprintf("UI Kit Demo (TPS: %0.2f - FPS: %0.2f)", ebiten.ActualTPS(), ebiten.ActualFPS())
+	g.title.SetText(title)
 
 	// Layout constants
 	x := g.theme.SpaceL

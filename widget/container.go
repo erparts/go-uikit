@@ -11,18 +11,28 @@ import (
 // Container is an empty widget that lets you render custom content inside a themed box.
 // It still participates in focus/invalid layout like any other widget.
 type Container struct {
-	base uikit.Base
+	base   uikit.Base
+	height int
 
 	OnUpdate func(ctx *uikit.Context, content image.Rectangle)
 	OnDraw   func(ctx *uikit.Context, dst *ebiten.Image, content image.Rectangle)
 }
 
 func NewContainer(theme *uikit.Theme) *Container {
+
 	cfg := uikit.NewWidgetBaseConfig(theme)
 
-	return &Container{
-		base: uikit.NewBase(cfg),
+	w := &Container{}
+	w.base = uikit.NewBase(cfg)
+	w.base.HeightCaculator = func() int {
+		return w.height
 	}
+
+	return w
+}
+
+func (c *Container) SetHeight(h int) {
+	c.height = h
 }
 
 func (c *Container) Base() *uikit.Base { return &c.base }
