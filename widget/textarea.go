@@ -5,8 +5,8 @@ import (
 	"math"
 	"strings"
 
+	"github.com/erparts/go-uikit"
 	"github.com/erparts/go-uikit/common"
-	"github.com/erparts/go-uikit/ui"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -15,14 +15,14 @@ import (
 
 // TextArea is a multi-line text editor with internal vertical scrolling.
 type TextArea struct {
-	base ui.Base
+	base uikit.Base
 
 	text        string
 	placeholder string
 
 	lines int
 
-	Scroll ui.Scroller
+	Scroll uikit.Scroller
 
 	// Caret config (end-of-text caret)
 	CaretWidthPx  int
@@ -31,11 +31,11 @@ type TextArea struct {
 	caretTick     int
 }
 
-func NewTextArea(theme *ui.Theme, placeholder string) *TextArea {
-	cfg := ui.NewWidgetBaseConfig(theme)
+func NewTextArea(theme *uikit.Theme, placeholder string) *TextArea {
+	cfg := uikit.NewWidgetBaseConfig(theme)
 
 	t := &TextArea{
-		base:          ui.NewBase(cfg),
+		base:          uikit.NewBase(cfg),
 		placeholder:   placeholder,
 		lines:         5,
 		CaretWidthPx:  2,
@@ -43,14 +43,14 @@ func NewTextArea(theme *ui.Theme, placeholder string) *TextArea {
 		CaretMarginPx: 0,
 	}
 
-	t.Scroll = ui.NewScroller()
-	t.Scroll.Scrollbar = ui.ScrollbarAlways // textarea typically shows it (content-dependent)
+	t.Scroll = uikit.NewScroller()
+	t.Scroll.Scrollbar = uikit.ScrollbarAlways // textarea typically shows it (content-dependent)
 	return t
 }
 
-func (t *TextArea) Base() *ui.Base  { return &t.base }
-func (t *TextArea) Focusable() bool { return true }
-func (t *TextArea) WantsIME() bool  { return true }
+func (t *TextArea) Base() *uikit.Base { return &t.base }
+func (t *TextArea) Focusable() bool   { return true }
+func (t *TextArea) WantsIME() bool    { return true }
 
 func (t *TextArea) Text() string     { return t.text }
 func (t *TextArea) SetText(s string) { t.text = s }
@@ -65,7 +65,7 @@ func (t *TextArea) SetLines(n int) {
 func (t *TextArea) Measure() image.Rectangle { return t.base.Rect }
 
 func (t *TextArea) SetFrame(x, y, w int) {
-	met, _ := ui.MetricsPx(t.base.Theme().Font, t.base.Theme().FontPx)
+	met, _ := uikit.MetricsPx(t.base.Theme().Font, t.base.Theme().FontPx)
 	lines := t.lines
 	if lines <= 0 {
 		lines = 5
@@ -78,7 +78,7 @@ func (t *TextArea) SetFrame(x, y, w int) {
 
 	totalH := controlH
 	if ok, errTxt := t.base.IsInvalid(); ok && errTxt != "" {
-		em, _ := ui.MetricsPx(t.base.Theme().Font, t.base.Theme().ErrorFontPx)
+		em, _ := uikit.MetricsPx(t.base.Theme().Font, t.base.Theme().ErrorFontPx)
 		totalH += t.base.Theme().ErrorGap + em.Height
 	}
 
@@ -89,7 +89,7 @@ func (t *TextArea) SetFrame(x, y, w int) {
 	t.base.Rect = image.Rect(x, y, x+w, y+totalH)
 }
 
-func (t *TextArea) Update(ctx *ui.Context) {
+func (t *TextArea) Update(ctx *uikit.Context) {
 	if t.base.Rect.Dx() > 0 && t.base.Rect.Dy() == 0 {
 		t.SetFrame(t.base.Rect.Min.X, t.base.Rect.Min.Y, t.base.Rect.Dx())
 	}
@@ -102,7 +102,7 @@ func (t *TextArea) Update(ctx *ui.Context) {
 
 	// Compute content viewport and metrics
 	_, content := t.controlAndContentRects(ctx)
-	met, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
+	met, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 
 	// Compute content height (scrollable)
 	lineCount := 1
@@ -190,12 +190,12 @@ func (t *TextArea) backspace() {
 	t.text = string(rs[:len(rs)-1])
 }
 
-func (t *TextArea) controlAndContentRects(ctx *ui.Context) (ctrl image.Rectangle, content image.Rectangle) {
+func (t *TextArea) controlAndContentRects(ctx *uikit.Context) (ctrl image.Rectangle, content image.Rectangle) {
 	r := t.base.Rect
 
 	errorH := 0
 	if ok, errTxt := t.base.IsInvalid(); ok && errTxt != "" {
-		em, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.ErrorFontPx)
+		em, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.ErrorFontPx)
 		errorH = ctx.Theme.ErrorGap + em.Height
 	}
 
@@ -209,20 +209,20 @@ func (t *TextArea) controlAndContentRects(ctx *ui.Context) (ctrl image.Rectangle
 	return ctrl, content
 }
 
-func (t *TextArea) errorRect(ctx *ui.Context) image.Rectangle {
+func (t *TextArea) errorRect(ctx *uikit.Context) image.Rectangle {
 	if ok, _ := t.base.IsInvalid(); !ok {
 		return image.Rectangle{}
 	}
 
 	ctrl, _ := t.controlAndContentRects(ctx)
 
-	em, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.ErrorFontPx)
+	em, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.ErrorFontPx)
 
 	top := ctrl.Max.Y + ctx.Theme.ErrorGap
 	return image.Rect(ctrl.Min.X, top, ctrl.Max.X, top+em.Height)
 }
 
-func (t *TextArea) Draw(ctx *ui.Context, dst *ebiten.Image) {
+func (t *TextArea) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	if t.base.Rect.Dx() > 0 && t.base.Rect.Dy() == 0 {
 		t.SetFrame(t.base.Rect.Min.X, t.base.Rect.Min.Y, t.base.Rect.Dx())
 	}
@@ -242,7 +242,7 @@ func (t *TextArea) Draw(ctx *ui.Context, dst *ebiten.Image) {
 	ctx.Text.SetSize(float64(ctx.Theme.FontPx))
 	ctx.Text.SetAlign(etxt.Left)
 
-	met, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
+	met, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 	startY := -t.Scroll.ScrollY
 
 	// Placeholder
@@ -285,7 +285,7 @@ func (t *TextArea) Draw(ctx *ui.Context, dst *ebiten.Image) {
 				lastLine = parts[lastIdx]
 			}
 
-			wBefore := ui.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, lastLine)
+			wBefore := uikit.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, lastLine)
 			cx := wBefore + t.CaretMarginPx
 			cy := (lastIdx * met.Height) - t.Scroll.ScrollY
 
@@ -318,7 +318,7 @@ func (t *TextArea) Draw(ctx *ui.Context, dst *ebiten.Image) {
 	t.base.DrawInvalid(ctx, dst, r)
 }
 
-func (t *TextArea) HitTest(ctx *ui.Context, x, y int) bool {
+func (t *TextArea) HitTest(ctx *uikit.Context, x, y int) bool {
 	ctrl, _ := t.controlAndContentRects(ctx)
 	if common.Contains(ctrl, x, y) {
 		return true

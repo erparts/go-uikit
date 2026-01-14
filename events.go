@@ -1,4 +1,4 @@
-package ui
+package uikit
 
 // EventType represents high-level UI events dispatched by Context.
 type EventType int

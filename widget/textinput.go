@@ -4,8 +4,8 @@ import (
 	"image"
 	"math"
 
+	"github.com/erparts/go-uikit"
 	"github.com/erparts/go-uikit/common"
-	"github.com/erparts/go-uikit/ui"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -14,7 +14,7 @@ import (
 // TextInput is a single-line input box (no label).
 // Height and proportions come from Theme; external layout controls only width.
 type TextInput struct {
-	base ui.Base
+	base uikit.Base
 
 	// Value / defaults
 	text                 string
@@ -31,11 +31,11 @@ type TextInput struct {
 	caretTick int
 }
 
-func NewTextInput(theme *ui.Theme, placeholder string) *TextInput {
-	cfg := ui.NewWidgetBaseConfig(theme)
+func NewTextInput(theme *uikit.Theme, placeholder string) *TextInput {
+	cfg := uikit.NewWidgetBaseConfig(theme)
 
 	return &TextInput{
-		base:          ui.NewBase(cfg),
+		base:          uikit.NewBase(cfg),
 		placeholder:   placeholder,
 		CaretWidthPx:  2,
 		CaretBlinkMs:  600,
@@ -43,9 +43,9 @@ func NewTextInput(theme *ui.Theme, placeholder string) *TextInput {
 	}
 }
 
-func (t *TextInput) Base() *ui.Base  { return &t.base }
-func (t *TextInput) Focusable() bool { return true }
-func (t *TextInput) WantsIME() bool  { return true }
+func (t *TextInput) Base() *uikit.Base { return &t.base }
+func (t *TextInput) Focusable() bool   { return true }
+func (t *TextInput) WantsIME() bool    { return true }
 
 func (t *TextInput) SetFrame(x, y, w int) {
 	t.base.SetFrame(x, y, w)
@@ -70,13 +70,13 @@ func (t *TextInput) SetDefault(s string) {
 func (t *TextInput) Reset() { t.text = t.DefaultText }
 
 // HandleEvent allows focus transitions to apply policies (default restore).
-func (t *TextInput) HandleEvent(ctx *ui.Context, e ui.Event) {
-	if e.Type == ui.EventFocusLost && t.RestoreDefaultOnBlur && t.text == "" {
+func (t *TextInput) HandleEvent(ctx *uikit.Context, e uikit.Event) {
+	if e.Type == uikit.EventFocusLost && t.RestoreDefaultOnBlur && t.text == "" {
 		t.text = t.DefaultText
 	}
 }
 
-func (t *TextInput) Update(ctx *ui.Context) {
+func (t *TextInput) Update(ctx *uikit.Context) {
 	if t.base.Rect.Dy() == 0 {
 		t.base.SetFrame(t.base.Rect.Min.X, t.base.Rect.Min.Y, t.base.Rect.Max.X)
 	}
@@ -134,7 +134,7 @@ func (t *TextInput) backspace() {
 	t.text = string(rs[:len(rs)-1])
 }
 
-func (t *TextInput) Draw(ctx *ui.Context, dst *ebiten.Image) {
+func (t *TextInput) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	t.base.Draw(ctx, dst)
 
 	r := t.base.ControlRect(ctx.Theme)
@@ -142,7 +142,7 @@ func (t *TextInput) Draw(ctx *ui.Context, dst *ebiten.Image) {
 	content := common.Inset(r, ctx.Theme.PadX, ctx.Theme.PadY)
 
 	// Baseline
-	met, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
+	met, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 	baselineY := r.Min.Y + (r.Dy()-met.Height)/2 + met.Ascent
 
 	// Text / placeholder
@@ -154,7 +154,7 @@ func (t *TextInput) Draw(ctx *ui.Context, dst *ebiten.Image) {
 	}
 
 	// Horizontal scroll so the end is visible (caret is always at end).
-	textW := ui.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, drawStr)
+	textW := uikit.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, drawStr)
 	shiftX := 0
 	if textW > content.Dx() {
 		shiftX = content.Dx() - textW
@@ -168,7 +168,7 @@ func (t *TextInput) Draw(ctx *ui.Context, dst *ebiten.Image) {
 	if t.base.IsFocused() && t.base.IsEnabled() && t.CaretWidthPx > 0 {
 		blinkFrames := int(math.Max(1, float64(t.CaretBlinkMs)/1000.0*60.0))
 		if (t.caretTick/blinkFrames)%2 == 0 {
-			wBefore := ui.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, t.text)
+			wBefore := uikit.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, t.text)
 			cx := content.Min.X + shiftX + wBefore + t.CaretMarginPx
 			cy := baselineY - met.Ascent
 			caretH := met.Height

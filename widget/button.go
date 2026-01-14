@@ -3,27 +3,27 @@ package widget
 import (
 	"image"
 
-	"github.com/erparts/go-uikit/ui"
+	"github.com/erparts/go-uikit"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 type Button struct {
-	base    ui.Base
+	base    uikit.Base
 	label   string
 	OnClick func()
 }
 
-func NewButton(theme *ui.Theme, label string) *Button {
-	cfg := ui.NewWidgetBaseConfig(theme)
+func NewButton(theme *uikit.Theme, label string) *Button {
+	cfg := uikit.NewWidgetBaseConfig(theme)
 
 	return &Button{
-		base:  ui.NewBase(cfg),
+		base:  uikit.NewBase(cfg),
 		label: label,
 	}
 }
 
-func (b *Button) Base() *ui.Base {
+func (b *Button) Base() *uikit.Base {
 	return &b.base
 }
 
@@ -49,19 +49,19 @@ func (b *Button) SetVisible(v bool) {
 
 func (b *Button) SetLabel(s string) { b.label = s }
 
-func (b *Button) HandleEvent(ctx *ui.Context, e ui.Event) {
+func (b *Button) HandleEvent(ctx *uikit.Context, e uikit.Event) {
 	if !b.base.IsEnabled() {
 		return
 	}
 
-	if e.Type == ui.EventClick {
+	if e.Type == uikit.EventClick {
 		if b.OnClick != nil {
 			b.OnClick()
 		}
 	}
 }
 
-func (b *Button) Update(ctx *ui.Context) {
+func (b *Button) Update(ctx *uikit.Context) {
 	if !b.base.IsEnabled() {
 		return
 	}
@@ -74,12 +74,12 @@ func (b *Button) Update(ctx *ui.Context) {
 	}
 }
 
-func (b *Button) Draw(ctx *ui.Context, dst *ebiten.Image) {
+func (b *Button) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	r := b.base.Draw(ctx, dst)
 
 	// Centered label
-	met, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
-	textW := ui.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, b.label)
+	met, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
+	textW := uikit.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, b.label)
 
 	tx := r.Min.X + (r.Dx()-textW)/2
 	baselineY := r.Min.Y + (r.Dy()-met.Height)/2 + met.Ascent

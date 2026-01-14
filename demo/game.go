@@ -11,23 +11,23 @@ import (
 	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/image/font/sfnt"
 
-	"github.com/erparts/go-uikit/ui"
-	"github.com/erparts/go-uikit/ui/widget"
+	"github.com/erparts/go-uikit"
+	"github.com/erparts/go-uikit/widget"
 )
 
 type Game struct {
-	stack    *ui.StackLayout
-	grid     *ui.GridLayout
+	stack    *uikit.StackLayout
+	grid     *uikit.GridLayout
 	useGrid  bool
 	contentH int
-	ime      ui.IMEBridge
+	ime      uikit.IMEBridge
 
 	winW, winH int
 
-	scale    ui.Scale
+	scale    uikit.Scale
 	renderer *etxt.Renderer
-	theme    *ui.Theme
-	ctx      *ui.Context
+	theme    *uikit.Theme
+	ctx      *uikit.Context
 
 	title        *widget.Label
 	txtA         *widget.TextInput
@@ -57,7 +57,7 @@ func mustFont() *sfnt.Font {
 func New() *Game { return &Game{} }
 
 // SetIMEBridge can be called from mobile bindings to enable keyboard show/hide.
-func (g *Game) SetIMEBridge(b ui.IMEBridge) {
+func (g *Game) SetIMEBridge(b uikit.IMEBridge) {
 	g.ime = b
 	if g.ctx != nil {
 		g.ctx.SetIMEBridge(b)
@@ -78,11 +78,11 @@ func (g *Game) initOnce() {
 	g.renderer.SetFont(f)
 
 	// Base theme in logical pixels. Actual rendering scale is handled by renderer.SetScale.
-	g.theme = ui.NewTheme(f, 20)
+	g.theme = uikit.NewTheme(f, 20)
 
-	g.ctx = ui.NewContext(g.theme, g.renderer, g.ime)
-	g.stack = ui.NewStackLayout(g.theme)
-	g.grid = ui.NewGridLayout(g.theme)
+	g.ctx = uikit.NewContext(g.theme, g.renderer, g.ime)
+	g.stack = uikit.NewStackLayout(g.theme)
+	g.grid = uikit.NewGridLayout(g.theme)
 
 	g.title = widget.NewLabel(g.theme, "UI Kit Demo — consistent proportions (Theme-driven)")
 	g.focusInfo = widget.NewLabel(g.theme, "")
@@ -104,7 +104,7 @@ func (g *Game) initOnce() {
 	g.sel = widget.NewSelect(g.theme, []string{"Option A", "Option B", "Option C", "Option D", "Option E", "Option F"})
 
 	g.box = widget.NewContainer(g.theme)
-	g.box.OnDraw = func(ctx *ui.Context, dst *ebiten.Image, content image.Rectangle) {
+	g.box.OnDraw = func(ctx *uikit.Context, dst *ebiten.Image, content image.Rectangle) {
 		// Example: draw custom content using the same text renderer/theme.
 		lines := []string{
 			"Custom container (user content)",
@@ -119,7 +119,7 @@ func (g *Game) initOnce() {
 			"- TextArea: required (empty is invalid).",
 		}
 
-		met, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
+		met, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 		y := content.Min.Y + met.Ascent
 		ctx.Text.SetColor(ctx.Theme.MutedText)
 		for _, ln := range lines {
@@ -154,7 +154,7 @@ func (g *Game) initOnce() {
 	g.ctx.Add(g.stack)
 	g.ctx.Add(g.grid)
 
-	contentWidgets := []ui.Widget{
+	contentWidgets := []uikit.Widget{
 		g.exampleLabel,
 		g.txtA,
 		g.txtB,
@@ -195,7 +195,7 @@ func (g *Game) Layout(outW, outH int) (int, int) {
 		uiScale = 1.25
 	}
 
-	g.scale = ui.Scale{Device: dev, UI: uiScale}
+	g.scale = uikit.Scale{Device: dev, UI: uiScale}
 	g.ctx.SetScale(g.scale)
 
 	// IMPORTANT: renderer scale must stay 1 (do not double scale).

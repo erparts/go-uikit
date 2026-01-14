@@ -3,37 +3,37 @@ package widget
 import (
 	"image"
 
+	"github.com/erparts/go-uikit"
 	"github.com/erparts/go-uikit/common"
-	"github.com/erparts/go-uikit/ui"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // Container is an empty widget that lets you render custom content inside a themed box.
 // It still participates in focus/invalid layout like any other widget.
 type Container struct {
-	base ui.Base
+	base uikit.Base
 
-	OnUpdate func(ctx *ui.Context, content image.Rectangle)
-	OnDraw   func(ctx *ui.Context, dst *ebiten.Image, content image.Rectangle)
+	OnUpdate func(ctx *uikit.Context, content image.Rectangle)
+	OnDraw   func(ctx *uikit.Context, dst *ebiten.Image, content image.Rectangle)
 }
 
-func NewContainer(theme *ui.Theme) *Container {
-	cfg := ui.NewWidgetBaseConfig(theme)
+func NewContainer(theme *uikit.Theme) *Container {
+	cfg := uikit.NewWidgetBaseConfig(theme)
 
 	return &Container{
-		base: ui.NewBase(cfg),
+		base: uikit.NewBase(cfg),
 	}
 }
 
-func (c *Container) Base() *ui.Base  { return &c.base }
-func (c *Container) Focusable() bool { return false }
+func (c *Container) Base() *uikit.Base { return &c.base }
+func (c *Container) Focusable() bool   { return false }
 
 func (c *Container) SetFrame(x, y, w int) {
 	c.base.SetFrame(x, y, w)
 }
 func (c *Container) Measure() image.Rectangle { return c.base.Rect }
 
-func (c *Container) Update(ctx *ui.Context) {
+func (c *Container) Update(ctx *uikit.Context) {
 	if c.base.Rect.Dy() == 0 {
 		c.base.SetFrame(c.base.Rect.Min.X, c.base.Rect.Min.Y, c.base.Rect.Dx())
 	}
@@ -43,7 +43,7 @@ func (c *Container) Update(ctx *ui.Context) {
 	}
 }
 
-func (c *Container) Draw(ctx *ui.Context, dst *ebiten.Image) {
+func (c *Container) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	r := c.base.Draw(ctx, dst)
 
 	content := common.Inset(r, ctx.Theme.PadX, ctx.Theme.PadY)

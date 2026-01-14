@@ -1,4 +1,4 @@
-package ui
+package uikit
 
 import (
 	"unicode/utf8"

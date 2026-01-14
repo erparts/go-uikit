@@ -3,31 +3,31 @@ package widget
 import (
 	"image"
 
+	"github.com/erparts/go-uikit"
 	"github.com/erparts/go-uikit/common"
-	"github.com/erparts/go-uikit/ui"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 type Checkbox struct {
-	base ui.Base
+	base uikit.Base
 
 	label   string
 	checked bool
 }
 
-func NewCheckbox(theme *ui.Theme, label string) *Checkbox {
-	cfg := ui.NewWidgetBaseConfig(theme)
+func NewCheckbox(theme *uikit.Theme, label string) *Checkbox {
+	cfg := uikit.NewWidgetBaseConfig(theme)
 
 	return &Checkbox{
-		base:  ui.NewBase(cfg),
+		base:  uikit.NewBase(cfg),
 		label: label,
 	}
 }
 
-func (c *Checkbox) Base() *ui.Base  { return &c.base }
-func (c *Checkbox) Focusable() bool { return true }
+func (c *Checkbox) Base() *uikit.Base { return &c.base }
+func (c *Checkbox) Focusable() bool   { return true }
 
 func (c *Checkbox) SetFrame(x, y, w int) {
 	c.base.SetFrame(x, y, w)
@@ -41,16 +41,16 @@ func (c *Checkbox) SetVisible(v bool) { c.base.SetVisible(v) }
 func (c *Checkbox) SetChecked(v bool) { c.checked = v }
 func (c *Checkbox) Checked() bool     { return c.checked }
 
-func (c *Checkbox) HandleEvent(ctx *ui.Context, e ui.Event) {
+func (c *Checkbox) HandleEvent(ctx *uikit.Context, e uikit.Event) {
 	if !c.base.IsEnabled() {
 		return
 	}
-	if e.Type == ui.EventClick {
+	if e.Type == uikit.EventClick {
 		c.checked = !c.checked
 	}
 }
 
-func (c *Checkbox) Update(ctx *ui.Context) {
+func (c *Checkbox) Update(ctx *uikit.Context) {
 	if c.base.Rect.Dy() == 0 {
 		c.base.SetFrame(c.base.Rect.Min.X, c.base.Rect.Min.Y, c.base.Rect.Dx())
 	}
@@ -65,7 +65,7 @@ func (c *Checkbox) Update(ctx *ui.Context) {
 	}
 }
 
-func (c *Checkbox) Draw(ctx *ui.Context, dst *ebiten.Image) {
+func (c *Checkbox) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	c.base.Draw(ctx, dst)
 
 	r := c.base.ControlRect(ctx.Theme)
@@ -101,7 +101,7 @@ func (c *Checkbox) Draw(ctx *ui.Context, dst *ebiten.Image) {
 	}
 
 	// Label
-	met, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
+	met, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 	baselineY := r.Min.Y + (r.Dy()-met.Height)/2 + met.Ascent
 	tx := box.Max.X + ctx.Theme.SpaceS
 

@@ -1,4 +1,4 @@
-package ui
+package uikit
 
 import (
 	"image/color"

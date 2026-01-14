@@ -4,15 +4,15 @@ import (
 	"image"
 	"math"
 
+	"github.com/erparts/go-uikit"
 	"github.com/erparts/go-uikit/common"
-	"github.com/erparts/go-uikit/ui"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // Select is a simple dropdown selector.
 // The dropdown is rendered as an overlay (does NOT change layout of other widgets).
 type Select struct {
-	base ui.Base
+	base uikit.Base
 
 	options []string
 	index   int
@@ -26,19 +26,19 @@ type Select struct {
 	MaxVisible int
 }
 
-func NewSelect(theme *ui.Theme, options []string) *Select {
-	cfg := ui.NewWidgetBaseConfig(theme)
+func NewSelect(theme *uikit.Theme, options []string) *Select {
+	cfg := uikit.NewWidgetBaseConfig(theme)
 
 	return &Select{
-		base:       ui.NewBase(cfg),
+		base:       uikit.NewBase(cfg),
 		options:    options,
 		index:      0,
 		MaxVisible: 5,
 	}
 }
 
-func (s *Select) Base() *ui.Base  { return &s.base }
-func (s *Select) Focusable() bool { return true }
+func (s *Select) Base() *uikit.Base { return &s.base }
+func (s *Select) Focusable() bool   { return true }
 
 func (s *Select) OverlayActive() bool { return s.open }
 
@@ -78,7 +78,7 @@ func (s *Select) SetFrame(x, y, w int) {
 
 func (s *Select) Measure() image.Rectangle { return s.base.Rect }
 
-func (s *Select) listRect(ctx *ui.Context) image.Rectangle {
+func (s *Select) listRect(ctx *uikit.Context) image.Rectangle {
 	ctrl := s.base.ControlRect(ctx.Theme)
 	n := len(s.options)
 	max := s.MaxVisible
@@ -93,7 +93,7 @@ func (s *Select) listRect(ctx *ui.Context) image.Rectangle {
 	return image.Rect(ctrl.Min.X, listY, ctrl.Max.X, listY+(n*ctx.Theme.ControlH))
 }
 
-func (s *Select) HitTest(ctx *ui.Context, x, y int) bool {
+func (s *Select) HitTest(ctx *uikit.Context, x, y int) bool {
 	ctrl := s.base.ControlRect(ctx.Theme)
 	if common.Contains(ctrl, x, y) {
 		return true
@@ -106,7 +106,7 @@ func (s *Select) HitTest(ctx *ui.Context, x, y int) bool {
 	return false
 }
 
-func (s *Select) Update(ctx *ui.Context) {
+func (s *Select) Update(ctx *uikit.Context) {
 	if s.base.Rect.Dx() > 0 && s.base.Rect.Dy() == 0 {
 		s.base.SetFrame(s.base.Rect.Min.X, s.base.Rect.Min.Y, s.base.Rect.Dx())
 	}
@@ -161,12 +161,12 @@ func (s *Select) Update(ctx *ui.Context) {
 	}
 }
 
-func (s *Select) Draw(ctx *ui.Context, dst *ebiten.Image) {
+func (s *Select) Draw(ctx *uikit.Context, dst *ebiten.Image) {
 	s.base.Draw(ctx, dst)
 
 	r := s.base.ControlRect(ctx.Theme)
 
-	met, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
+	met, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 	baselineY := r.Min.Y + (r.Dy()-met.Height)/2 + met.Ascent
 
 	val := s.Value()
@@ -179,11 +179,11 @@ func (s *Select) Draw(ctx *ui.Context, dst *ebiten.Image) {
 
 	// Chevron
 	chev := "▾"
-	cw := ui.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, chev)
+	cw := uikit.MeasureStringPx(ctx.Theme.Font, ctx.Theme.FontPx, chev)
 	ctx.Text.Draw(dst, chev, r.Max.X-ctx.Theme.PadX-cw, baselineY)
 }
 
-func (s *Select) DrawOverlay(ctx *ui.Context, dst *ebiten.Image) {
+func (s *Select) DrawOverlay(ctx *uikit.Context, dst *ebiten.Image) {
 	if !s.open {
 		return
 	}
@@ -192,7 +192,7 @@ func (s *Select) DrawOverlay(ctx *ui.Context, dst *ebiten.Image) {
 	s.base.DrawRoundedRect(dst, list, ctx.Theme.Radius, ctx.Theme.Surface)
 	s.base.DrawRoundedBorder(dst, list, ctx.Theme.Radius, ctx.Theme.BorderW, ctx.Theme.Border)
 
-	met, _ := ui.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
+	met, _ := uikit.MetricsPx(ctx.Theme.Font, ctx.Theme.FontPx)
 
 	n := list.Dy() / ctx.Theme.ControlH
 	for i := 0; i < n; i++ {

@@ -1,4 +1,4 @@
-package ui
+package uikit
 
 // IMEBridge is implemented on the Java side and registered from your mobile package.
 // In this minimal integration, it only opens/closes the keyboard.

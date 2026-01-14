@@ -1,53 +1,54 @@
-package ui
+package uikit
 
 import (
 	"image"
-	"image/color"
 
 	"github.com/erparts/go-uikit/common"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-// StackLayout places children vertically. If height > 0 it becomes scrollable and clips via SubImage.
-type StackLayout struct {
+// GridLayout places children in a fixed column grid. If height > 0 it becomes scrollable and clips via SubImage.
+type GridLayout struct {
 	base     Base
 	children []Widget
 
+	Columns int
+
 	PadX int
 	PadY int
-	Gap  int
+	GapX int
+	GapY int
 
 	Scroll Scroller
 
 	contentH int
 
-	scratch    *ebiten.Image
-	background color.RGBA
+	scratch *ebiten.Image
 }
 
-func NewStackLayout(theme *Theme) *StackLayout {
-	l := &StackLayout{base: NewBase(&WidgetBaseConfig{})}
-	l.base.SetEnabled(true)
+func NewGridLayout(theme *Theme) *GridLayout {
+	l := &GridLayout{base: NewBase(&WidgetBaseConfig{})}
+	l.Columns = 2
 	//l.PadX = theme.SpaceM
 	//l.PadY = theme.SpaceM
-	l.Gap = theme.SpaceS
+	l.GapX = theme.SpaceS
+	l.GapY = theme.SpaceS
 	l.Scroll = NewScroller()
 	return l
 }
 
-func (l *StackLayout) Base() *Base     { return &l.base }
-func (l *StackLayout) Focusable() bool { return false }
+func (l *GridLayout) Base() *Base     { return &l.base }
+func (l *GridLayout) Focusable() bool { return false }
 
-func (l *StackLayout) SetFrame(x, y, w int) {
+func (l *GridLayout) SetFrame(x, y, w int) {
 	l.base.Rect = image.Rect(x, y, x+w, y+l.base.Rect.Dy())
 }
 
-func (l *StackLayout) Measure() image.Rectangle {
+func (l *GridLayout) Measure() image.Rectangle {
 	return l.base.Rect
 }
 
-// SetHeight sets the viewport height. Use 0 for unlimited (no scroll, no clipping).
-func (l *StackLayout) SetHeight(h int) {
+func (l *GridLayout) SetHeight(h int) {
 	if h < 0 {
 		h = 0
 	}
@@ -55,62 +56,84 @@ func (l *StackLayout) SetHeight(h int) {
 	l.base.Rect = common.ChangeRectangleHeight(l.base.Rect, h)
 }
 
-// Children management
-func (l *StackLayout) Children() []Widget      { return l.children }
-func (l *StackLayout) SetChildren(ws []Widget) { l.children = ws }
-func (l *StackLayout) Add(ws ...Widget)        { l.children = append(l.children, ws...) }
-func (l *StackLayout) Clear()                  { l.children = nil }
+func (l *GridLayout) Children() []Widget      { return l.children }
+func (l *GridLayout) SetChildren(ws []Widget) { l.children = ws }
+func (l *GridLayout) Add(ws ...Widget)        { l.children = append(l.children, ws...) }
+func (l *GridLayout) Clear()                  { l.children = nil }
 
-func (l *StackLayout) Update(ctx *Context) {
-	// Layout pass (compute frames and content height)
+func (l *GridLayout) Update(ctx *Context) {
 	l.doLayout(ctx)
 
-	// Scroll input only when height is limited
 	if l.base.Rect.Dy() > 0 {
 		l.Scroll.Update(ctx, l.base.Rect, l.contentH)
-		// Re-layout with updated scroll offset
 		l.doLayout(ctx)
 	}
 
-	// Forward update
-	for _, w := range l.children {
-		if !w.Base().IsVisible() {
+	for _, ch := range l.children {
+		if !ch.Base().visible {
 			continue
 		}
-
-		w.Update(ctx)
+		ch.Update(ctx)
 	}
 }
 
-func (l *StackLayout) doLayout(ctx *Context) {
+func (l *GridLayout) doLayout(ctx *Context) {
 	vp := l.base.Rect
-	x0 := vp.Min.X + l.PadX
-	y0 := vp.Min.Y + l.PadY
-	w0 := vp.Dx() - l.PadX*2
-	if w0 < 0 {
-		w0 = 0
+	cols := l.Columns
+	if cols <= 0 {
+		cols = 2
 	}
 
+	innerW := vp.Dx() - l.PadX*2
+	if innerW < 0 {
+		innerW = 0
+	}
+	cellW := innerW
+	if cols > 0 {
+		cellW = (innerW - (cols-1)*l.GapX) / cols
+		if cellW < 0 {
+			cellW = 0
+		}
+	}
+
+	x0 := vp.Min.X + l.PadX
+	y0 := vp.Min.Y + l.PadY
+	x := x0
 	y := y0
 	if vp.Dy() > 0 {
 		y -= l.Scroll.ScrollY
 	}
 
 	contentH := l.PadY * 2
+	rowMaxH := 0
+	col := 0
+
 	for i, ch := range l.children {
 		if !ch.Base().visible {
 			continue
 		}
-		ch.SetFrame(x0, y, w0)
+		ch.SetFrame(x, y, cellW)
 		r := ch.Measure()
-		contentH += r.Dy()
-		if i != len(l.children)-1 {
-			contentH += l.Gap
+		if r.Dy() > rowMaxH {
+			rowMaxH = r.Dy()
 		}
-		y += r.Dy() + l.Gap
+
+		col++
+		last := i == len(l.children)-1
+		if col >= cols || last {
+			contentH += rowMaxH
+			if !last {
+				contentH += l.GapY
+			}
+			y += rowMaxH + l.GapY
+			x = x0
+			col = 0
+			rowMaxH = 0
+		} else {
+			x += cellW + l.GapX
+		}
 	}
 
-	// At least viewport height so scrollbar math is stable
 	if vp.Dy() > 0 && contentH < vp.Dy() {
 		contentH = vp.Dy()
 	}
@@ -118,14 +141,12 @@ func (l *StackLayout) doLayout(ctx *Context) {
 	l.contentH = contentH
 }
 
-func (l *StackLayout) Draw(ctx *Context, dst *ebiten.Image) {
-	if !l.base.IsVisible() {
+func (l *GridLayout) Draw(ctx *Context, dst *ebiten.Image) {
+	if !l.base.visible {
 		return
 	}
-
 	vp := l.base.Rect
 	if vp.Dy() <= 0 {
-		// Unlimited: draw directly
 		for _, ch := range l.children {
 			if !ch.Base().visible {
 				continue
@@ -141,39 +162,32 @@ func (l *StackLayout) Draw(ctx *Context, dst *ebiten.Image) {
 	if l.scratch == nil || l.scratch.Bounds().Dx() != sw || l.scratch.Bounds().Dy() != sh {
 		l.scratch = ebiten.NewImage(sw, sh)
 	}
-
 	l.scratch.Clear()
 
 	for _, ch := range l.children {
 		if !ch.Base().visible {
 			continue
 		}
-
 		ch.Draw(ctx, l.scratch)
 	}
 
 	part := l.scratch.SubImage(vp).(*ebiten.Image)
-
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(vp.Min.X), float64(vp.Min.Y))
 	dst.DrawImage(part, op)
 
-	// Scrollbar inside viewport (draw on clipped dst region)
 	sub := dst.SubImage(vp).(*ebiten.Image)
 	l.Scroll.DrawBar(sub, ctx.Theme, vp.Dx(), vp.Dy(), l.contentH)
-
 }
 
-func (l *StackLayout) DrawOverlay(ctx *Context, dst *ebiten.Image) {
+func (l *GridLayout) DrawOverlay(ctx *Context, dst *ebiten.Image) {
 	if !l.base.visible {
 		return
 	}
-	// Overlay should escape clipping -> draw on dst (not on subimage)
 	for _, ch := range l.children {
 		if ow, ok := any(ch).(OverlayWidget); ok && ow.OverlayActive() {
 			ow.DrawOverlay(ctx, dst)
 		}
-		// Nested layouts will propagate overlays naturally.
 		if ll, ok := any(ch).(interface{ DrawOverlay(*Context, *ebiten.Image) }); ok {
 			ll.DrawOverlay(ctx, dst)
 		}
